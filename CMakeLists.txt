@@ -9,18 +9,27 @@ add_definitions(-std=c++0x)
 set(CMAKE_CXX_COMPILER /usr/bin/g++)
 set(CMAKE_CXX_FLAGS "${CMAXE_CXX_FLAGS} -Wall -g")
 
-set(tictactoe_sources
-  src/tictactoe.cpp
-  include/tictactoe.h)
+set(sources_dir
+  ${CMAKE_CURRENT_SOURCE_DIR}/src)
+set(headers_dir
+  ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(tests_dir
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests)
 
-add_executable(tictactoe ${tictactoe_sources})
+set(tictactoe_sources
+  ${sources_dir}/tictactoe.cpp
+  ${headers_dir}/tictactoe.h)
 
 set(test_sources
-  tests/main.cpp
-  tests/tictactoeTest.cpp)
+  ${tests_dir}/main.cpp
+  ${tests_dir}/tictactoeTest.cpp
+  ${headers_dir}/tictactoe.h)
+
+add_executable(tictactoe ${tictactoe_sources})
+target_include_directories(tictactoe PUBLIC ${sources_dir} ${headers_dir})
 
 add_executable(test ${test_sources})
-target_include_directories(test PUBLIC ./tests)
+target_include_directories(test PUBLIC ${sources_dir} ${tests_dir} ${headers_dir})
 target_link_libraries(test pthread)
 target_link_libraries(test gmock)
 target_link_libraries(test gtest)
