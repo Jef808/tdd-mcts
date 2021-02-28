@@ -20,16 +20,16 @@ set(tictactoe_sources
   ${sources_dir}/tictactoe.cpp
   ${headers_dir}/tictactoe.h)
 
-set(test_sources
-  ${tests_dir}/main.cpp
-  ${tests_dir}/tictactoeTest.cpp
-  ${headers_dir}/tictactoe.h)
-
-add_executable(tictactoe ${tictactoe_sources})
+add_library(tictactoe ${tictactoe_sources})
 target_include_directories(tictactoe PUBLIC ${sources_dir} ${headers_dir})
 
-add_executable(test ${test_sources})
-target_include_directories(test PUBLIC ${sources_dir} ${tests_dir} ${headers_dir})
-target_link_libraries(test pthread)
-target_link_libraries(test gmock)
-target_link_libraries(test gtest)
+set(testTictactoe_sources
+  ${tests_dir}/tictactoeTest.cpp
+  )
+
+add_executable(testTictactoe ${testTictactoe_sources})
+target_link_libraries(testTictactoe tictactoe)
+target_include_directories(testTictactoe PUBLIC ${sources_dir} ${tests_dir} ${headers_dir})
+target_link_libraries(testTictactoe pthread)
+target_link_libraries(testTictactoe gmock)
+target_link_libraries(testTictactoe gtest)
