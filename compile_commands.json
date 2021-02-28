@@ -1,0 +1,17 @@
+[
+{
+  "directory": "/home/jfa/code/projects/tddmcts/build",
+  "command": "/usr/bin/g++  -I/include -I/gtest/include -I/home/jfa/code/projects/tddmcts/./tests  -Wall -g   -std=c++0x -o CMakeFiles/test.dir/tests/main.cpp.o -c /home/jfa/code/projects/tddmcts/tests/main.cpp",
+  "file": "/home/jfa/code/projects/tddmcts/tests/main.cpp"
+},
+{
+  "directory": "/home/jfa/code/projects/tddmcts/build",
+  "command": "/usr/bin/g++  -I/include -I/gtest/include -I/home/jfa/code/projects/tddmcts/./tests  -Wall -g   -std=c++0x -o CMakeFiles/test.dir/tests/tictactoeTest.cpp.o -c /home/jfa/code/projects/tddmcts/tests/tictactoeTest.cpp",
+  "file": "/home/jfa/code/projects/tddmcts/tests/tictactoeTest.cpp"
+},
+{
+  "directory": "/home/jfa/code/projects/tddmcts/build",
+  "command": "/usr/bin/g++  -I/include -I/gtest/include  -Wall -g   -std=c++0x -o CMakeFiles/tictactoe.dir/src/tictactoe.cpp.o -c /home/jfa/code/projects/tddmcts/src/tictactoe.cpp",
+  "file": "/home/jfa/code/projects/tddmcts/src/tictactoe.cpp"
+}
+]
