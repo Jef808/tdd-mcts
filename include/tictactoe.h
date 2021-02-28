@@ -16,42 +16,39 @@ enum class Token { EMPTY,
     X,
     O };
 /** Token to string. */
-const extern std::string to_s(const Token _token);
+extern const std::string to_s(const Token _token);
 /** The lines giving a win when filled up. */
-const extern std::array<std::array<int, 3>, 8> WIN_COMBIN;
+extern const std::array<std::array<int, 3>, 8> WIN_COMBIN;
 /** An empty 3x3 board. */
-const extern std::array<Token, 9> EMPTY_GRID;
+extern const std::array<Token, 9> EMPTY_GRID;
 
-// inline bool operator==(const Token& token, const Token& other_token)
-// {
-//     return to_s(token) == to_s(other_token);
-// }
-
-/** The actions to be played. */
-struct Action {
-    int ndx;
-    Token token;
-    Action(int _ndx = -1, Token _token = Token::EMPTY);
-    //bool operator==(const Action& other) const;
-    //operator std::string() const;
-};
+// /** The actions to be played. */
+// struct Action {
+//     int ndx {-1};
+//     Token token {Token::EMPTY};
+//     //Action(int _ndx = -1, Token _token = Token::EMPTY);
+//     //bool operator==(const Action& other) const;
+//     //operator std::string() const;
+// };
 
 /** State of a 3x3 Tic-Tac-Toe game. */
 class State {
-    // const std::array<line_t, 8>& WIN_COMBIN = ttt::WIN_COMBIN;
-    // const std::array<Token, 9>& EMPTY_GRID = ttt::EMPTY_GRID;
     using grid_t = std::array<Token, 9>;
     //using line_t = std::array<int, 3>;
     //using line_token_t = std::array<Token, 3>;
 
 public:
-    /** Initialize a State from a given 3x3 grid. */
+    /** Initialize an empty State */
     State();
-    // State(State&&) = default;
+    State(const grid_t&);
+    //State(grid_t&&);
+    //State(State&&) = default;
     // State& operator=(State&&) = default;
     // ~State() = default;
-    // /** Copy ctor */
-    // State(const State& other) = default;
+    ///** Copy ctor */
+    //State(const State& other) = default;
+    /** Mostly for debugging and tests */
+    const grid_t& get_grid() const;
     ///** Check if the current game is over */
     // bool is_terminal() const;
     // /** Return indices of empty cells. */
@@ -60,6 +57,8 @@ public:
     // State& apply_action(const Action&);
     // /** Immutable version of apply_action */
     // State& apply_action(const Action&) const;
+    //
+    //
     // /** Return the token of the winner if any or the empty token */
     // Token get_winner() const;
     // /** Check if game is a draw. */
@@ -71,7 +70,7 @@ public:
     // /** Pretty display the state. */
     // std::string to_s() const;
     // Token operator[](int ndx) const { return grid[ndx]; }
-    const grid_t& get_grid() const;
+
     // bool operator==(const State& other) const { return grid == other.grid; }
 
     //double eval_terminal(Token) const;

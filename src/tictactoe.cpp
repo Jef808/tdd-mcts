@@ -16,19 +16,7 @@ const std::array<Token, 9> EMPTY_GRID = {Token::EMPTY};
 //*******************************  Action  ****************************/
 
 
-const std::string to_s(const Token _token)
- {
-    switch (_token) {
-    case Token::X:
-        return "X";
-    case Token::O:
-        return "O";
-    default:
-        return " ";
-    }
-}
-
-Action::Action(int _ndx, Token _token) : ndx(_ndx) , token(_token) { }
+//Action::Action(int _ndx, Token _token) : ndx(_ndx) , token(_token) { }
 // bool Action::operator==(const Action& other) const
 // {
 //     return ndx == other.ndx && token == other.token;
@@ -39,16 +27,18 @@ Action::Action(int _ndx, Token _token) : ndx(_ndx) , token(_token) { }
 
 State::State() : grid(EMPTY_GRID) { }
 
+State::State(const grid_t& _grid) : grid(_grid) { }
 
+const std::array<Token, 9>& State::get_grid() const
+{
+    return grid;
+}
+
+//State::State(grid_t&& _grid) : grid(_grid) { }
 
 // bool State::is_terminal() const
 // {
 //     return n_empty_cells() == 0 || get_winner() != Token::EMPTY;
-// }
-
-// Token State::get_next_player() const
-// {
-//     return n_empty_cells() & 1 ? Token::X : Token::O;
 // }
 
 // std::vector<Action> State::get_valid_actions() const
@@ -111,10 +101,7 @@ State::State() : grid(EMPTY_GRID) { }
 //     return {{grid[line[0]], grid[line[1]], grid[line[2]]}};
 // }
 
-const State::grid_t& State::get_grid() const
-{
-    return grid;
-}
+
 
 } // ttt
 
