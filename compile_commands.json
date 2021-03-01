@@ -1,12 +1,12 @@
 [
 {
-  "directory": "/home/jfa/code/projects/tddmcts",
+  "directory": "/home/jfa/code/projects/tddmcts/build",
   "command": "/usr/bin/g++  -I/include -I/gtest/include -I/home/jfa/code/projects/tddmcts/src -I/home/jfa/code/projects/tddmcts/include  -Wall -g -std=gnu++17 -o CMakeFiles/tictactoe.dir/src/tictactoe.cpp.o -c /home/jfa/code/projects/tddmcts/src/tictactoe.cpp",
   "file": "/home/jfa/code/projects/tddmcts/src/tictactoe.cpp"
 },
 {
-  "directory": "/home/jfa/code/projects/tddmcts",
-  "command": "/usr/bin/g++  -I/include -I/gtest/include -I/home/jfa/code/projects/tddmcts/src -I/home/jfa/code/projects/tddmcts/tests -I/home/jfa/code/projects/tddmcts/include  -Wall -g -std=gnu++17 -o CMakeFiles/testTictactoe.dir/tests/testTictactoe.cpp.o -c /home/jfa/code/projects/tddmcts/tests/testTictactoe.cpp",
-  "file": "/home/jfa/code/projects/tddmcts/tests/testTictactoe.cpp"
+  "directory": "/home/jfa/code/projects/tddmcts/build",
+  "command": "/usr/bin/g++  -I/include -I/gtest/include -I/home/jfa/code/projects/tddmcts/src -I/home/jfa/code/projects/tddmcts/tests -I/home/jfa/code/projects/tddmcts/include  -Wall -g -std=gnu++17 -o CMakeFiles/testState.dir/tests/testState.cpp.o -c /home/jfa/code/projects/tddmcts/tests/testState.cpp",
+  "file": "/home/jfa/code/projects/tddmcts/tests/testState.cpp"
 }
 ]
