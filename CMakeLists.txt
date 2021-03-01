@@ -39,3 +39,5 @@ target_include_directories(testState PUBLIC ${sources_dir} ${tests_dir} ${header
 target_link_libraries(testState pthread)
 target_link_libraries(testState gmock)
 target_link_libraries(testState gtest)
+
+set(tests testState)

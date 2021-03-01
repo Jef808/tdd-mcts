@@ -184,27 +184,30 @@ namespace {
 
     TEST_F(StateTest, IsTerminalFalseWhenStillCanPlay)
     {
+        State state { };
+        std::vector<ttt::Action> actions ({ {2, Token::O}, {4, Token::X}, {1, Token::O}, {7, Token::X} });
 
-        State state {};
-        std::array<ttt::Action, 5> actions { { ttt::Action(0, Token::X),
-            ttt::Action(2, Token::O),
-            ttt::Action(4, Token::X),
-            ttt::Action(1, Token::O),
-            ttt::Action(7, Token::X) } };
+        auto it = begin(actions);
+        auto apply_action = [&it, &state] () {
 
-        std::array<State, 6> states {};
-        states[0] = state;
-        for (int i = 1; i < 6; ++i) {
-            states[i] = actions[i - 1](states[i - i]);
+            state = (*it)(state);
+            ++it;
+        };
+
+        bool sentinel = false;
+
+        while (it != end(actions))
+        {
+            sentinel = true;
+
+            EXPECT_THAT(state.is_terminal(), IsFalse());
+            apply_action();
         }
 
-        std::array<bool, 6> results { true };
-
-        for (int i = 0; i < 6; ++i) {
-            results[i] = states[i].is_terminal();
+        if (!sentinel)
+        {
+            FAIL() << "Test IsTerminalFalseWhenStillCanPlay escaped the assertions!" << std::endl;
         }
-
-        ASSERT_THAT(results, Each(IsFalse()));
     }
 
     TEST_F(StateTest, IsTerminalTrueOnWinner)
