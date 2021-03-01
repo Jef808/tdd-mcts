@@ -1,124 +1,59 @@
-#include <array>
 #include <iostream>
+#include <limits>
 #include <string>
+#include <utility>
 #include "tictactoe.h"
 
 namespace ttt {
 
-
 //******************************  Constants  ************************/
 
-const std::array<std::array<int, 3>, 8> WIN_COMBIN ={{{ 0, 1, 2 }, { 3, 4, 5 }, { 6, 7, 8 },
-            { 0, 3, 6 }, { 1, 4, 7 }, { 2, 5, 8 }, { 0, 4, 8 }, { 2, 4, 6 } } };
-const std::array<Token, 9> EMPTY_GRID = {Token::EMPTY};
+//const grid_t EMPTY_GRID = {Token::EMPTY};
 
-
-//*******************************  Action  ****************************/
-
-
-//Action::Action(int _ndx, Token _token) : ndx(_ndx) , token(_token) { }
-// bool Action::operator==(const Action& other) const
-// {
-//     return ndx == other.ndx && token == other.token;
-// }
+const std::array<State::row_t, 8> State::WIN_COMBIN = {{ { 0, 1, 2 }, { 3, 4, 5 }, { 6, 7, 8 },
+            { 0, 3, 6 }, { 1, 4, 7 }, { 2, 5, 8 }, { 0, 4, 8 }, { 2, 4, 6 } }};
 
 
 //*********************************  State  ******************************/
 
-State::State() : grid(EMPTY_GRID) { }
+    State::State(grid_t&& grid)
+        : m_grid(std::move(grid))
+    {
+    }
 
-State::State(const grid_t& _grid) : grid(_grid) { }
+    // TODO implement `is_terminal`
 
-const std::array<Token, 9>& State::get_grid() const
-{
-    return grid;
-}
+    const State::grid_t& State::grid() const
+    {
+        return m_grid;
+    }
 
-//State::State(grid_t&& _grid) : grid(_grid) { }
+//*******************************  Action  ****************************/
 
-// bool State::is_terminal() const
-// {
-//     return n_empty_cells() == 0 || get_winner() != Token::EMPTY;
-// }
+    Action::Action(ndx_t ndx, value_t val)
+        : m_ndx(ndx)
+        , m_val(val)
+    {
+    }
 
-// std::vector<Action> State::get_valid_actions() const
-// {
-//     std::vector<Action> ret {};
-//     std::for_each(cbegin(grid), cend(grid), [ndx = 0, nex_player = get_next_player(), &ret](const auto& t) mutable {
-//         if (t == Token::EMPTY) {
-//             ret.emplace_back(ndx, nex_player);
-//         }
-//         ++ndx;
-//     });
-//     return ret;
-// }
+    Action::grid_t& Action::apply_to(grid_t& grid) const
+    {
+        grid[m_ndx] = m_val;
+        return grid;
+    }
 
-// State& State::apply_action(const Action& action)
-// {
-//     grid[action.ndx] = action.token;
-//     return *this;
-// }
+    State& Action::operator()(State& state) const
+    {
+        this->apply_to(state.m_grid);
+        return state;
+    }
 
-// State& State::apply_action(const Action& action) const
-// {
-//     State new_state(*this);
-//     return new_state.apply_action(action);
-// }
-
-
-// bool State::three_in_row(const std::array<Token, 3>& line, Token tok) const
-// {
-//     return std::all_of(cbegin(line), cend(line), [&tok](const auto& t)
-//     {
-//         return t == tok;
-//     });
-// }
-
-// Token State::get_winner() const
-// {
-//     auto line_tok = line_token_t();
-//     for (const auto& line_ : WIN_COMBIN) {
-//         line_tok = get_tokens(line_);
-//         if (three_in_row(line_tok, Token::X))
-//         {
-//             return Token::X;
-//         }
-//         else if (three_in_row(line_tok, Token::O))
-//         {
-//             return Token::O;
-//         }
-//     }
-//     return Token::EMPTY;
-// }
-
-// size_t State::n_empty_cells() const
-// {
-//     return std::count_if(begin(grid), end(grid), [](Token t) { return t == Token::EMPTY; });
-// }
-
-// State::line_token_t State::get_tokens(const line_t& line) const
-// {
-//     return {{grid[line[0]], grid[line[1]], grid[line[2]]}};
-// }
-
+    State Action::operator()(const State& state) const
+    {
+        auto grid_cpy = grid_t(state.grid());
+        this->apply_to(grid_cpy);
+        return State(std::move(grid_cpy));
+    }
 
 
 } // ttt
-
-// double State::eval_terminal(Token player_token) const
-// {
-//     Token winner = get_winner();
-//     if (winner == player_token) {
-//         return 1.0;
-//     }
-//     return winner == Token::EMPTY ? 0.0 : -1.0;
-// }
-
-
-
-
-
-// bool State::is_draw() const
-// {
-//     return n_empty_cells() == 0 && get_winner() == Token::EMPTY;
-// }

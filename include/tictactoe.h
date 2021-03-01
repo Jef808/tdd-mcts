@@ -1,122 +1,72 @@
 #ifndef __TICTACTOE_H_
 #define __TICTACTOE_H_
 
-#include <algorithm>
 #include <array>
-#include <iostream>
-#include <iterator>
-#include <ostream>
-#include <string>
+#include <optional>
 #include <vector>
 
 namespace ttt {
 
-/** The possible values for a Cell in a Tic-Tac-Toe grid. */
-enum class Token { EMPTY,
-    X,
-    O };
-/** Token to string. */
-extern const std::string to_s(const Token _token);
-/** The lines giving a win when filled up. */
-extern const std::array<std::array<int, 3>, 8> WIN_COMBIN;
-/** An empty 3x3 board. */
-extern const std::array<Token, 9> EMPTY_GRID;
+    /** Represents the possible values for the state's cells. */
+    enum class Token { X, O }; //, EMPTY };
 
-// /** The actions to be played. */
-// struct Action {
-//     int ndx {-1};
-//     Token token {Token::EMPTY};
-//     //Action(int _ndx = -1, Token _token = Token::EMPTY);
-//     //bool operator==(const Action& other) const;
-//     //operator std::string() const;
-// };
+    /** Class that implements the changes that can be done to a state. */
+    class Action;
 
-/** State of a 3x3 Tic-Tac-Toe game. */
-class State {
-    using grid_t = std::array<Token, 9>;
-    //using line_t = std::array<int, 3>;
-    //using line_token_t = std::array<Token, 3>;
+    /**
+     * State class, holds the data of the game and manages the various rules.
+     * Allows Action as a friend class so that none of State's methods have
+     * any side effect.
+    */
+    class State {
 
-public:
-    /** Initialize an empty State */
-    State();
-    State(const grid_t&);
-    //State(grid_t&&);
-    //State(State&&) = default;
-    // State& operator=(State&&) = default;
-    // ~State() = default;
-    ///** Copy ctor */
-    //State(const State& other) = default;
-    /** Mostly for debugging and tests */
-    const grid_t& get_grid() const;
-    ///** Check if the current game is over */
-    // bool is_terminal() const;
-    // /** Return indices of empty cells. */
-    // std::vector<Action> get_valid_actions() const;
-    // /** Play a move on the board directly. */
-    // State& apply_action(const Action&);
-    // /** Immutable version of apply_action */
-    // State& apply_action(const Action&) const;
-    //
-    //
-    // /** Return the token of the winner if any or the empty token */
-    // Token get_winner() const;
-    // /** Check if game is a draw. */
-    // bool is_draw() const;
-    // /** The player who's turn it is to play.*/
-    // Token get_next_player() const;
-    // /** Output a short string describing the state. */
-    // operator std::string() const;
-    // /** Pretty display the state. */
-    // std::string to_s() const;
-    // Token operator[](int ndx) const { return grid[ndx]; }
+        using row_t = std::array<int, 3>;
+        static const std::array<row_t, 8> WIN_COMBIN;
 
-    // bool operator==(const State& other) const { return grid == other.grid; }
+        public:
+            using ndx_t = int;
+            using value_t = std::optional<Token>;
+            using grid_t = std::array<value_t, 9>;
 
-    //double eval_terminal(Token) const;
+            /** Initialization of a state from a grid. */
+            State(grid_t&& = grid_t());
+            ///** Deleted copy constructor. */
+            //State(const State&) = delete;
+            /** Determine if the state represents a game that's over. */
+            bool is_terminal() const;
+            const grid_t& grid() const;
+        private:
+            friend class Action;
 
-private:
-    /** The grid holding the cells of the game. */
-    grid_t grid;
-    ///** Takes a triple of grid indices and return the corresponding tokens. */
-    //line_token_t get_tokens(const line_t&) const;
-    ///** Number of empty cells. */
-    //size_t n_empty_cells() const;
-    ///** Checks if the tokens at the given indices are all the same. */
-    //bool three_in_row(const line_token_t&, Token) const;
-};
+            /** The internal data of the state. */
+            grid_t  m_grid;
+    };
 
+    /**
+     * Changes the token at a specified index to a specified token.
+     * Actions with `m_token' equal to `Token::EMPTY' do nothing.
+    */
+    class Action {
+        using ndx_t = State::ndx_t;
+        using value_t = State::value_t;
+        using grid_t = State::grid_t;
 
+        public:
+            Action(ndx_t, value_t);
+            /** Applies this action on a state in place. */
+            State& operator()(State&) const;
+            /** Applies this action on a copy of the state */
+            State operator()(const State&) const;
 
-// /** Action to string */
-// inline Action::operator std::string() const {
-//     return "(" + std::to_string(ndx) + "," + to_s(token) + ")";
-// }
-// /** State to string */
-// inline State::operator std::string() const {
-//     auto res = std::string();
-//     for (int i = 0; i < 3; ++i) {
-//         res += "| ";
-//         for (int j = 0; j < 3; ++j) {
-//             res += ttt::to_s(grid[i * 3 + j]) + " ";
-//         }
-//         res += " |\n";
-//     }
-//     return res;
-// }
-// /** To print a token. */
-// inline std::ostream& operator<<(std::ostream& _out, ttt::Token _token) {
-//     return _out << to_s(_token);
-// }
-// /** To print a state. */
-// inline std::ostream& operator<<(std::ostream& _out, const ttt::State& _state) {
-//     return _out << std::string(_state);
-// }
-// /** To print an action. */
-// inline std::ostream& operator<<(std::ostream& _out, ttt::Action _action) {
-//     return _out << '(' << _action.ndx << ", " << _action.token << ')';
-// }
+        private:
+            ndx_t m_ndx;
+            value_t m_val;
 
+            /** Implementation of the action. */
+            grid_t& apply_to(grid_t&) const;
+
+    };
+    
 } // ttt
 
 
