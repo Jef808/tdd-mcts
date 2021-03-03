@@ -40,4 +40,15 @@ target_link_libraries(testState pthread)
 target_link_libraries(testState gmock)
 target_link_libraries(testState gtest)
 
-set(tests testState)
+set(testNode_sources
+  ${tests_dir}/testNode.cpp
+  ${tests_dir}/mocks.h
+  ${headers_dir}/node.h)
+
+add_executable(testNode ${testNode_sources})
+target_include_directories(testNode PUBLIC ${sources_dir} ${tests_dir} ${headers_dir})
+target_link_libraries(testNode pthread)
+target_link_libraries(testNode gmock)
+target_link_libraries(testNode gtest)
+
+add_custom_target(test_all testState testNode)
