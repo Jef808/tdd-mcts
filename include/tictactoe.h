@@ -16,9 +16,9 @@ enum Token {
     O,
 };
 
-enum Cell {
-    CELL_NONE,
-    CELL_END = 10
+enum Cell : int {
+    CELL_NONE = -1,
+    CELL_END = 9
 };
 
 enum Move : int {
@@ -33,8 +33,9 @@ typedef uint64_t Key;
  * a move can be undone.
  */
 struct StateData {
-    Key key             = 0;
-    StateData* previous = nullptr;
+    Key key;
+    int gamePly;
+    StateData* previous;
 };
 
 class State {
@@ -52,19 +53,20 @@ class State {
     Token next_player() const;
     bool is_full() const;
     bool is_terminal() const;
+    bool is_draw() const;
     std::vector<Move>& valid_actions();
     State& apply_move(Move);
-    State& undo_move(Move);
+    void apply_move(Move, StateData&);
+    void undo_move(Move);
 
     // Zobrist keys
-    Key get_key() const;
+    Key key() const;
 
     // Game logic encoded in bitstrings.
-    static bool is_terminal(Key);
-    static Token winner(Key);
-    static Token next_player(Key);
-    static Key apply_move(Key, Move);
-    //static Key undo_move(Move, Key) const;
+    bool is_terminal(Key);
+    Token winner(Key);
+    Token next_player(Key);
+    //static Key after_move(Key, Move);
 
     const grid_t& grid() const;                 // Only for testing.
     const std::list<Cell>& empty_cells() const; // Only for testing
@@ -75,6 +77,8 @@ private:
     StateData* data;
     std::list<Cell> m_empty_cells;
     std::vector<Move> m_valid_actions;
+
+    int gamePly = 1;
 };
 
 } // namespace mcts

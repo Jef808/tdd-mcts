@@ -48,6 +48,11 @@ Move cellTokenToMove(Cell c, Token t)
 
 //*********************************  State  ******************************/
 
+
+// TODO: Should separate the core "id-key" that can move with simple xors, from the whole
+// key encorporating bitmasking info etc... (which needs to be recomputed).
+//
+// Can do the TT queries with the id-keys, and put the rest of the data in a StateData object (which is fetched).
 namespace Zobrist {
 
     std::array<Key, 19> ndx_keys { 0 };     // First entry will be 0, for the Empty initial state
@@ -61,20 +66,23 @@ namespace Zobrist {
         return moveKey(cellTokenToMove(i, token));
     }
 
+    Key cellKey(Cell i) {
+        return tokenKey(i, X) ^ tokenKey(i, O);
+    }
+
     /**
      * The second bit tells us the next player to play.
-     * the second bit tells us the winner (0 for X, 1 for O),
-     * while if it's a draw, the third bit is toggled on.
+     * the first bit tells us if state is terminal,
+     * in which case the third bit tells us if it's a draw.
      *
-     * 001 : 'X wins', 011 : 'O wins', 1*1 : 'draw', *00 : 'X to play', *10 : 'O to play'.
+     * 011 : 'X wins', 001 : 'O wins', 1*1 : 'draw', *00 : 'X to play', *10 : 'O to play'.
      */
     Key status_key(const State& state) {
+        Key ret = state.next_player() << 1;
+        ret ^= state.is_terminal();
+        ret ^= state.is_draw() << 2;
 
-        if (!state.is_terminal())
-        {
-            return state.next_player() << 1;
-        }
-        return state.winner() << 1 ^ 1;
+        return ret;
     }
 
     // TODO Implement the winner() method using WIN_LINES as bitmasks.
@@ -96,10 +104,12 @@ void State::init()
 }
 
 State::State()
+    : m_grid{}
 {
     for (int i=0; i<9; ++i)
     {
         m_empty_cells.push_back(Cell(i));
+        data = new StateData();
     }
 }
 
@@ -116,31 +126,21 @@ State::State(grid_t&& grid)
 State State::clone() const
 {
     auto grid = m_grid;
-    return State{std::move(grid)};
+    auto state = State{std::move(grid)};
+    state.gamePly = gamePly;
+
+    return state;
 }
 
-Key State::get_key() const
+Key State::key() const
 {
-    Key res = 0;
-    const auto begin = m_grid.begin();
-    auto it = begin;
-    while (it != m_grid.end())
-    {
-        auto ndx = std::distance(begin, it);
-        res ^= Zobrist::tokenKey((Cell)ndx, *it) ;
-        ++it;
-    }
-    res ^= Zobrist::status_key(*this);
-    return res;
+    return data->key;
 }
 
 Token State::next_player() const
 {
-    // auto cells_filled = std::count_if(begin(m_grid), end(m_grid), [](const auto& a) {
-    //     return a != TOK_EMPTY;
-    // });
-
-    return m_empty_cells.size() & 1 ? X : O;
+    return gamePly & 1 ? X : O;
+    //return m_empty_cells.size() & 1 ? X : O;
 }
 
 /**
@@ -149,7 +149,7 @@ Token State::next_player() const
  */
 bool State::is_full() const
 {
-    return m_empty_cells.empty();
+    return gamePly >= 9;
 }
 
 std::vector<Move>& State::valid_actions()
@@ -161,19 +161,6 @@ std::vector<Move>& State::valid_actions()
     {
         m_valid_actions.push_back(cellTokenToMove(c, token));
     }
-
-    // auto cbegin = m_grid.cbegin();
-    // auto it = m_grid.begin();
-    // size_t cnt = 0;
-
-    // while (it != m_grid.end() && *it != TOK_EMPTY)
-    // {
-    //     size_t ndx = std::distance(cbegin, it);
-    //     Move mv = Move(ndx + (*it == X ? 1 : 10));
-    //     m_valid_actions[cnt] = mv;
-    //     ++cnt;
-    //     ++it;
-    // }
     return m_valid_actions;
 }
 
@@ -193,19 +180,57 @@ bool State::is_terminal() const
     return is_full() || winner() != TOK_EMPTY;
 }
 
+bool State::is_draw() const
+{
+    return is_terminal() && winner() == TOK_EMPTY;
+}
+
+// TODO: Update tests etc... and delete this
 State& State::apply_move(Move m)
 {
     auto cell = moveToCell(m);
     assert(m_empty_cells.remove(cell) == 1);
 
     m_grid[(int)cell] = moveToToken(m);
+    ++gamePly;
 
     return *this;
 }
 
-Key State::apply_move(Key key, Move move)
+void State::apply_move(Move m, StateData& new_sd)
 {
-    return key ^ Zobrist::moveKey(move);
+    new_sd = *data;
+    new_sd.previous = data;
+    data = &(new_sd);
+
+    auto cell = moveToCell(m);
+    assert(m_empty_cells.remove(cell) == 1);
+
+    data->key ^= Zobrist::moveKey(m);
+
+    if (winner() != TOK_EMPTY)
+    {
+        data->key ^= 1;    // Toggle first two bits.
+    }
+    else if (is_terminal())
+    {
+        data->key ^= 5;    // Toggle first and third bits.
+    }
+
+    ++gamePly;
+    m_grid[(int)cell] = moveToToken(m);
+}
+
+void State::undo_move(Move m)
+{
+    auto cell = moveToCell(m);
+    assert(m_grid[(int)cell] != TOK_EMPTY);
+
+    m_grid[(int)cell] = TOK_EMPTY;
+    m_empty_cells.push_back(cell);
+
+    --gamePly;
+    data = data->previous;
 }
 
 bool State::is_terminal(Key key)
@@ -215,7 +240,11 @@ bool State::is_terminal(Key key)
 
 Token State::winner(Key key)
 {
-    return Token((key & 6) >> 1);
+    return key & 1 ? key >> 2 & 1 ? TOK_EMPTY
+                                  : key >> 1 & 1 ? X
+                                                 : O
+                   : TOK_EMPTY;
+    //return Token((key & 6) >> 1);
 }
 
 Token State::next_player(Key key)
