@@ -8,19 +8,6 @@
 
 namespace mcts {
 
-// typedef struct Ndx {
-//     enum _Ndx : int {
-//         _BEGIN = 0,
-//         _NULL = 10
-//     } m_ndx;
-//     Ndx operator++() {
-//         int tm_ndx = m_ndx;
-//         if (++tm_ndx < 10) { return (_Ndx)(tm_ndx); } { return _BEGIN; }
-//     }
-//     operator int() { return (int)m_ndx; }
-//     Ndx(int i) : m_ndx((_Ndx)i) { }
-// } Ndx;
-
 // TODO Update the Keys methods. I change TOK_EMPTY from 2 to 0 so that arrays initialize to
 // the correct token by default.
 enum Token {
@@ -30,13 +17,13 @@ enum Token {
 };
 
 enum Cell {
-    CELL_NULL,
+    CELL_NONE,
     CELL_END = 10
 };
 
 enum Move : int {
-    MOVE_NULL,
-    MOVE_END=20
+    MOVE_NONE,
+    MOVE_END = 19
 };
 
 typedef uint64_t Key;
@@ -46,8 +33,8 @@ typedef uint64_t Key;
  * a move can be undone.
  */
 struct StateData {
-    Key key;
-    StateData* previous;
+    Key key             = 0;
+    StateData* previous = nullptr;
 };
 
 class State {
@@ -58,12 +45,12 @@ class State {
 
     State();
     // explicit State(const grid_t&);
-    explicit State(grid_t&&);
+    explicit State(grid_t&&);  // Only for testing.
 
     // Game logic
     Token winner() const;
     Token next_player() const;
-    bool full() const;
+    bool is_full() const;
     bool is_terminal() const;
     std::vector<Move>& valid_actions();
     State& apply_move(Move);
@@ -75,9 +62,9 @@ class State {
     // Game logic encoded in bitstrings.
     static bool is_terminal(Key);
     static Token winner(Key);
-    Token next_player(Key) const;
-    Key apply_move(Move, Key) const;
-    Key undo_move(Move, Key) const;
+    static Token next_player(Key);
+    static Key apply_move(Key, Move);
+    //static Key undo_move(Move, Key) const;
 
     const grid_t& grid() const;                 // Only for testing.
     const std::list<Cell>& empty_cells() const; // Only for testing

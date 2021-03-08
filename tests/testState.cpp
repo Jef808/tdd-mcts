@@ -59,20 +59,10 @@ namespace {
     protected:
         StateTest()
             : initialState()
-            , stateHeap(new State())
-            , action_X0{1}
-            , action_O4{4}
         {
         }
-        ~StateTest() override
-        {
-            delete stateHeap;
-        }
-        // void TearDown() override { }
+
         State initialState;
-        State* stateHeap;
-        Move action_X0;
-        Move action_O4;
      };
 
     using namespace ::testing;
@@ -114,7 +104,7 @@ namespace {
 
     TEST_F(StateTest, ApplyMoveIsComposable)
     {
-        ASSERT_THAT(initialState.apply_move(Move(1)).apply_move(Move(14)).grid(), ContainerEq(TestEnvironment::testGridOneXO));
+        ASSERT_THAT(initialState.apply_move(Move(1)).apply_move(Move(13)).grid(), ContainerEq(TestEnvironment::testGridOneXO));
     }
 
     TEST_F(StateTest, IsTerminalTrueOnFullGrid)
@@ -127,7 +117,7 @@ namespace {
     TEST_F(StateTest, IsTerminalFalseWhenStillCanPlay)
     {
         State state { };
-        std::vector<Move> actions { Move(12), Move(5), Move(11), Move(8) };
+        std::vector<Move> actions { Move(11), Move(5), Move(10), Move(8) };
 
         auto it = begin(actions);
         auto apply_action = [&it, &state] () {
@@ -163,7 +153,7 @@ namespace {
     TEST_F(StateTest, EmptyCellsFullOnInitialState)
     {
         std::list<Cell> expected;
-        for (int i=1; i<10; ++i)
+        for (int i=0; i<9; ++i)
         {
             expected.push_back(Cell(i));
         }
@@ -175,7 +165,7 @@ namespace {
     {
         State state ( TestEnvironment::CreateGrid({ 0, 4, 7 }, { 2, 5 }) );
         std::list<Cell> expected;
-        std::vector<int> expected_ndx {{ 2, 4, 7, 9 }};
+        std::vector<int> expected_ndx {{ 1, 3, 6, 8 }};
         for (auto ndx : expected_ndx)
         {
             expected.push_back(Cell(ndx));
@@ -186,13 +176,13 @@ namespace {
 
     TEST_F(StateTest, ApplyingMoveRemovesCellFromEmptyCells)
     {
+        initialState.apply_move(Move(5)).apply_move(Move(15));
         std::list<Cell> expected;
-        for (int i=1; i<10; ++i)
+        std::vector<int> expected_ndx {{ 0, 1, 2, 3, 6, 7, 8}};
+        for (auto ndx : expected_ndx)
         {
-            if (i != 5)
-                expected.push_back(Cell(i));
+            expected.push_back(Cell(ndx));
         }
-        initialState.apply_move(Move(5));
 
         ASSERT_THAT(initialState.empty_cells(), ContainerEq(expected));
     }
@@ -205,7 +195,7 @@ namespace {
         state.apply_move(Move(2));
         EXPECT_THAT(state.next_player(), Eq(O));
 
-        state.apply_move(Move(13));
+        state.apply_move(Move(12));
         EXPECT_THAT(state.next_player(), Eq(X));
     }
 
@@ -214,7 +204,7 @@ namespace {
         State state ( TestEnvironment::CreateGrid({ 0, 4, 7 }, { 2, 5 }) );
 
         auto empty_cells = state.empty_cells();
-        std::vector<Move> expected {{ Move(12), Move(14), Move(17), Move(19) }};
+        std::vector<Move> expected {{ Move(11), Move(13), Move(16), Move(18) }};
 
         ASSERT_THAT(state.valid_actions(), ContainerEq(expected));
     }
@@ -223,7 +213,7 @@ namespace {
     {
         EXPECT_THAT(initialState.valid_actions(), Each(Lt(10)));
         initialState.apply_move(Move(1));
-        EXPECT_THAT(initialState.valid_actions(), Each(Gt(10)));
+        EXPECT_THAT(initialState.valid_actions(), Each(Gt(9)));
     }
 
 

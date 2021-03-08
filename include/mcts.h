@@ -30,10 +30,12 @@ public:
 
     Node* current_node();
     bool is_root(Node* root);
+    bool is_terminal();
     void do_move(Move move);
     void undo_move();
-    void generate_actions();
-    void init_actionchild(Node* node, Move move, Reward rollout_score, int move_cnt);
+    void init_children();
+
+    Reward random_simulation(Move move);
 
 private:
     State& state;
@@ -42,32 +44,29 @@ private:
     int ply;
     int iteration_cnt;
 
-    // To store the search data locally
-    std::vector<Node*> node_buffer;
-    std::vector<StateData> node_stack;
-
+    // To keep track of nodes during the search (indexed by ply)
+    std::vector<Node*>     nodes;
 };
 
 struct ActionNode {
     Move move;
     int n_visits;
-    Reward first_rollout;
+    Reward prior_value;
     Reward action_value;
     Reward avg_action_value;
 };
 
 struct Node {
-    using cont_children = std::array<ActionNode, Agent::MAX_CHILDREN>;
+    using cont_children = std::vector<ActionNode>;
 public:
     Key                 key                              = 0;           // Zobrist Hash of the state
-    Move                last_move                        = MOVE_NULL;
+    Move                last_move                        = MOVE_NONE;
     int                 n_visits                         = 0;
     int                 n_children                       = 0;
     int                 n_expanded_children              = 0;
-    //ActionNode          children[Agent::MAX_PLY];
-    cont_children children;
+    cont_children       children;
 
-    //std::vector<ActionNode>& children_list() { return children; }
+    cont_children& children_list() { return children; }
     cont_children::iterator begin() { return children.begin(); }
     cont_children::iterator end() { return children.end(); }
 };

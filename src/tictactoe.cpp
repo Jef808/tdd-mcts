@@ -16,16 +16,21 @@ namespace mcts {
 //******************************  Constants  ************************/
 
 std::array<Cell, 3> C(const std::array<int, 3>& arr) {
-        std::array<Cell, 3> ret { (Cell)(arr[0]), (Cell)(arr[1]), (Cell)(arr[2]) };
+    std::array<Cell, 3> ret { Cell(arr[0]), Cell(arr[1]), Cell(arr[2]) };
 
-        return ret;
-    }
+    return ret;
+}
 
 const std::array<std::array<Cell, 3>, 8> State::WIN_LINES = {  C({ 0, 1, 2 }), C({ 3, 4, 5 }), C({ 6, 7, 8 }),
      C({ 0, 3, 6 }), C({ 1, 4, 7 }), C({ 2, 5, 8 }), C({ 0, 4, 8 }), C({ 2, 4, 6 })  };
 
 //******************************  Util functions  **********************/
 
+/**
+ * Moves are indexed starting at index 1.
+ * So after MOVE_NONE = 0, MOVE(1) through MOVE(9) are
+ * the moves with 'X' tokens, and MOVE(10) through MOVE(18) are those with 'O'.
+ */
 Token moveToToken(Move m)
 {
     return Token(1+m/10);
@@ -33,35 +38,27 @@ Token moveToToken(Move m)
 
 Cell moveToCell(Move m)
 {
-    return Cell(m % 10);
+    return Cell((m-1) % 9);
 }
 
 Move cellTokenToMove(Cell c, Token t)
 {
-    return Move( (int)c + (t-1) * 10 );
+    return Move( 1 + (int)c + (t-1) * 9 );
 }
 
 //*********************************  State  ******************************/
 
 namespace Zobrist {
 
-    std::array<Key, 19> ndx_keys { 0 };         // First entry is 0, for the Empty initial state
+    std::array<Key, 19> ndx_keys { 0 };     // First entry will be 0, for the Empty initial state
 
-    /**
-     * So move m corresponds to (Cell, Token) = (m % 10 + 1, (int)(m / 10.0))
-     * MOVE_NULL = 0 corresponds to the empty state, then MOVE(1) through MOVE(9)
-     * are the moves with 'X' tokens, and MOVE(10) through MOVE(18) are those with 'O'.
-     */
     Key moveKey(Move move) {
         return ndx_keys[move];
     }
 
     Key tokenKey(Cell i, Token token) {
-        return ndx_keys[(1 + i) * (1 - ((token & 2) >> 1)) + ((token & 1) * 10)];
-    }
-
-    Move tokenToMove(Cell i, Token token) {
-        return (Move)(1 + (int)i + token == X ? 1 : 11);      // (i, 'X') -> i+1 , (i, 'O') -> i+1 + 10 , (i, TOK_EMPTY) -> 0
+        //return ndx_keys[(1 + i) * (1 - ((token & 2) >> 1)) + ((token & 1) * 10)];
+        return moveKey(cellTokenToMove(i, token));
     }
 
     /**
@@ -78,7 +75,7 @@ namespace Zobrist {
             return state.next_player() << 1;
         }
         return state.winner() << 1 ^ 1;
-        }
+    }
 
     // TODO Implement the winner() method using WIN_LINES as bitmasks.
 }  // namespace Zobrist
@@ -99,11 +96,8 @@ void State::init()
 }
 
 State::State()
-    : m_grid()
-    , m_empty_cells()
-    , m_valid_actions()
 {
-    for (int i=1; i<10; ++i)
+    for (int i=0; i<9; ++i)
     {
         m_empty_cells.push_back(Cell(i));
     }
@@ -111,19 +105,13 @@ State::State()
 
 State::State(grid_t&& grid)
     : m_grid(std::move(grid))
-    , m_empty_cells()
-    , m_valid_actions()
 {
-    for (int i=1; i<10; ++i)
+    for (int i=0; i<9; ++i)
     {
-        if (grid[i-1] == TOK_EMPTY)
+        if (grid[i] == TOK_EMPTY)
             m_empty_cells.push_back(Cell(i));
     }
 }
-// State::State(const grid_t& grid)
-//     : m_grid(grid)
-// {
-// }
 
 Key State::get_key() const
 {
@@ -140,27 +128,6 @@ Key State::get_key() const
     return res;
 }
 
-Key State::apply_move(Move move, Key key) const
-{
-    return key ^ Zobrist::moveKey(move);
-}
-
-bool State::is_terminal(Key key)
-{
-    return key & 1;
-}
-
-Token State::next_player(Key key) const
-{
-    return (Token)(key >> 1 & 1);
-}
-
-Token State::winner(Key key)
-{
-    return (Token)((key & 6) >> 1);
-}
-
-
 Token State::next_player() const
 {
     // auto cells_filled = std::count_if(begin(m_grid), end(m_grid), [](const auto& a) {
@@ -174,10 +141,8 @@ Token State::next_player() const
  * Lighter version of valid_actions() used to check if
  * state is terminal
  */
-bool State::full() const
+bool State::is_full() const
 {
-    // a >> 1 is one if and only if a is empty
-    // std::any_of(begin(m_grid), end(m_grid), [](auto a){ return a >> 1 & 1; });
     return m_empty_cells.empty();
 }
 
@@ -206,7 +171,6 @@ std::vector<Move>& State::valid_actions()
     return m_valid_actions;
 }
 
-
 Token State::winner() const
 {
     for (const auto& row : WIN_LINES) {
@@ -220,7 +184,7 @@ Token State::winner() const
 
 bool State::is_terminal() const
 {
-    return full() || winner() != TOK_EMPTY;
+    return is_full() || winner() != TOK_EMPTY;
 }
 
 State& State::apply_move(Move m)
@@ -228,9 +192,29 @@ State& State::apply_move(Move m)
     auto cell = moveToCell(m);
     assert(m_empty_cells.remove(cell) == 1);
 
-    m_grid[(int)cell - 1] = moveToToken(m);
+    m_grid[(int)cell] = moveToToken(m);
 
     return *this;
+}
+
+Key State::apply_move(Key key, Move move)
+{
+    return key ^ Zobrist::moveKey(move);
+}
+
+bool State::is_terminal(Key key)
+{
+    return key & 1;
+}
+
+Token State::winner(Key key)
+{
+    return Token((key & 6) >> 1);
+}
+
+Token State::next_player(Key key)
+{
+    return Token(key >> 1 & 1);
 }
 
 const State::grid_t& State::grid() const
