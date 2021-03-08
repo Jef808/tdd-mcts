@@ -10,8 +10,9 @@
 
 namespace mcts {
 
-template <class S>
-class Node;
+template<class S>
+using Move = typename S::move_t;
+
 
 template <size_t N>
 class Zobrist {
@@ -46,33 +47,22 @@ struct NodeAction {
  * later on. For now, let's store a copy of the whole state.
  */
 template <class S>
-class Node {
+class NodeState {
 public:
     typedef NodeAction<S> naction_t;
+    using a_cont_t = std::vector<naction_t>;
 
-    Node(const S& state)
+    NodeState(const S& state)
         : m_state(state)
         , m_valid_actions(to_naction_t(state.valid_actions()))
     {
     }
-    std::vector<naction_t>& valid_actions() { return m_valid_actions; }
-
-    std::vector<naction_t> unexp_actions()
-    {
-        auto not_expanded = [](const auto& a){ return !a.expanded(); };
-        return valid_actions()
-            | ranges::views::filter(not_expanded)
-            | ranges::to<std::vector>;
-    }
-
-    void expand_action(naction_t& action)
-    {
-        action.mark_expanded();
-    }
-
-    void expand_action(int action_ndx)
+    const a_cont_t& valid_actions() const { return m_valid_actions; }
+    a_cont_t unexpanded_actions() const;
+    NodeState expand_action(int action_ndx) const
     {
         valid_actions()[action_ndx].mark_expanded();
+        return NodeState(m_state);
     }
 
 private:
@@ -87,7 +77,23 @@ private:
                        | ranges::to<std::vector>;
     }
 
+    S state_from_action(naction_t& action) const
+    {
+        S nex_state = action(m_state);
+        action.mark_expanded();
+        return nex_state;
+    }
 };
+
+template<class S>
+std::vector<typename NodeState<S>::naction_t> NodeState<S>::unexpanded_actions() const
+{
+    auto not_expanded = [](const auto& a){ return !a.expanded(); };
+    return valid_actions()
+        | ranges::views::filter(not_expanded)
+        | ranges::to<std::vector>;
+}
+
 
 } // namespace mcts
 

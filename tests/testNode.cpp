@@ -9,24 +9,6 @@ namespace mcts {
 
 namespace {
 
-    struct FakeState {
-
-        using action_t = int;
-        FakeState()
-            : mock_state(nullptr)
-        {
-        }
-        void init(MockState* mock)
-        {
-            mock_state = mock;
-        }
-        std::vector<action_t> valid_actions() const
-        {
-            return mock_state->valid_actions();
-        }
-        MockState* mock_state;
-    };
-
     class TestEnvironment : public ::testing::Environment {
     };
 
@@ -36,69 +18,71 @@ namespace {
             : fake_state()
         {
         }
-        using NodeT = mcts::Node<FakeState>;
+        using NodeStateT = mcts::NodeState<FakeState>;
+        using Q = MockState::action_t;
+        using R = NodeStateT::naction_t;
+        void SetUp()
+        {
+            state_actions0123 = { Q{0}, 1, 2, 3 };
+            state_actions013 = { Q{0}, 1, 3 };
+            node_actions0123 = { R{0, false}, {1, false}, {2, false}, {3, false} };
+            node_actions_2toggled = { R{0, false}, {1, false}, {2, true}, {3, false} };
+            node_actions_013unexpanded = { R{0, false}, {1, false}, {3, false} };
+        }
+        std::vector<Q> state_actions0123;
+        std::vector<Q> state_actions013;
+        std::vector<R> node_actions0123;
+        std::vector<R> node_actions_2toggled;
+        std::vector<R> node_actions_013unexpanded;
 
         FakeState fake_state;
     };
 
-    class NodeActionsTest : public NodeTest {
-    protected:
-        using Q = MockState::action_t;
-        using R = NodeT::naction_t;
-        void SetUp()
-        {
-            state_actions = { Q{0}, 1, 2, 3 };
-            node_actions = { R{0, false}, {1, false}, {2, false}, {3, false} };
-            node_actions_toggled = { R{0, false}, {1, false}, {2, true}, {3, false} };
-
-        }
-
-        std::vector<Q> state_actions;
-        std::vector<R> node_actions;
-        std::vector<R> node_actions_toggled;
-};
-
-
     using namespace testing;
 
-    //ACTION(stateActions) { return NodeActionsTest::state_actions; };
-
-
-
-    TEST_F(NodeActionsTest, NodeSavesValidActionsOnInitialize)
+    TEST_F(NodeTest, NodeSavesValidActionsOnInitialize)
     {
         MockState mock_state; fake_state.init(&mock_state);
-        EXPECT_CALL(mock_state, valid_actions()).Times(1).WillOnce(Return(state_actions));
-        NodeT node { fake_state };
-        ASSERT_THAT(node.valid_actions(), ContainerEq(node_actions));
-    }
+        EXPECT_CALL(mock_state, valid_actions()).Times(1).WillOnce(Return(state_actions0123));
 
-    TEST_F(NodeActionsTest, ExpandingAnActionTurnsOnItsExpandedField)
-    {
-        MockState mock_state; fake_state.init(&mock_state);
-        EXPECT_CALL(mock_state, valid_actions()).Times(1).WillOnce(Return(state_actions));
-        NodeT node { fake_state };
-        node.expand_action(node.valid_actions()[1]);
-        ASSERT_THAT(node.valid_actions(), ContainerEq(node_actions_toggled));
+        NodeStateT node { fake_state };
+        ASSERT_THAT(node.valid_actions(), ContainerEq(node_actions0123));
     }
 
     TEST_F(NodeTest, UnexpandedActionsReturnsActionsUnexpanded)
     {
-        MockState mock_state;
+        MockState mock_state; fake_state.init(&mock_state);
+        EXPECT_CALL(mock_state, valid_actions()).Times(2).WillOnce(Return(state_actions0123))
+                                                         .WillOnce(Return(state_actions013));
 
-        EXPECT_CALL(mock_state, valid_actions());
-        ON_CALL(mock_state, valid_actions()).WillByDefault([]() {
-            return std::vector<int> { 1, 2, 3 };
-        });
-
-        fake_state.init(&mock_state);
-        NodeT node { fake_state };
-        node.expand_action(1);
-
-        using T = NodeT::naction_t;
-        ASSERT_THAT(node.unexp_actions(),
-                    ElementsAreArray({ T{1, false}, {3, false}  }));
+        NodeStateT node { fake_state };
+        node.expand_action(2);
+        ASSERT_THAT(node.unexpanded_actions(), ContainerEq(node_actions_013unexpanded));
     }
+
+    TEST_F(NodeTest, ExpandingAnActionTogglesOnItsExpandedField)
+    {
+        MockState mock_state; fake_state.init(&mock_state);
+        EXPECT_CALL(mock_state, valid_actions()).Times(2).WillOnce(Return(state_actions0123))
+                                                         .WillOnce(Return(state_actions013));
+
+        NodeStateT node { fake_state };
+        node.expand_action(2);
+        ASSERT_THAT(node.valid_actions(), ContainerEq(node_actions_2toggled));
+    }
+
+    // TEST_F(NodeTest, ExpandingUsesActionToCreateNewState)
+    // {
+    //     MockNodeAction mock_action;
+    //     MockState mock_state;
+    //     fake_state.init(&mock_state);
+
+    //     EXPECT_CALL(mock_state, )
+    //     EXPECT_CALL(mock_action, act(mock_state));
+    // }
+
+
+
 
 
 } // namespace

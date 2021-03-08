@@ -1,118 +1,58 @@
-#include "mocks.h"
-#include "tictactoe.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest-matchers.h"
-#include "gtest/gtest.h"
 #include <optional>
 #include <typeinfo>
 #include <utility>
+#include "gmock/gmock.h"
+#include "gmock/gmock-matchers.h"
+#include "gtest/gtest.h"
+#include "tictactoe.h"
 
-namespace ttt {
+namespace mcts {
 namespace {
-
-    //ussing namespace ::testing;
 
     class TestEnvironment : public ::testing::Environment {
 
     public:
-        static inline State::grid_t const testGridEmpty { std::nullopt, std::nullopt, std::nullopt,
-            std::nullopt, std::nullopt, std::nullopt,
-            std::nullopt, std::nullopt, std::nullopt };
-
-        static inline State::grid_t const testGridOneX = { Token::X, std::nullopt, std::nullopt,
-            std::nullopt, std::nullopt, std::nullopt,
-            std::nullopt, std::nullopt, std::nullopt };
-
-        static inline State::grid_t const testGridOneXO = { Token::X, std::nullopt, std::nullopt,
-            std::nullopt, Token::O, std::nullopt,
-            std::nullopt, std::nullopt, std::nullopt };
-
-        // Usage of GridBuilder :
+        // Usage of CreateGrid :
         //          testGridXWinner = { Token::X,     std::nullopt, Token::O,
         //                              std::nullopt, Token::X,     Token::O,
         //                              std::nullopt, std::nullopt, Token::X } };
         // Is expressed as
-        //          testGridXWinner = GridBuilder({0, 4, 8}, {2, 5});
+        //          testGridXWinner = CreateGrid({0, 4, 8}, {2, 5});
         //
         // i.e. the first set of indices are for the X tokens, the second for O tokens.
-        static State::grid_t GridBuilder(std::vector<int> XsNdx, std::vector<int> OsNdx)
-        {
-            State::grid_t ret {};
-            for (auto ndx : XsNdx) {
-                ret[ndx] = Token::X;
-            }
-            for (auto ndx : OsNdx) {
-                ret[ndx] = Token::O;
-            }
-            return ret;
-        }
 
-        static std::vector<int> projNdx(const std::vector<Action>& actions)
+        using T = std::vector<int>;
+        static State::grid_t CreateGrid(T Xs, T Os)
         {
-            std::vector<int> ret {};
-
-            for (const auto& action : actions) {
-                ret.push_back(action.ndx());
+            State::grid_t ret { };
+            for (auto ndx : Xs) {
+                ret[ndx] = X;
+            }
+            for (auto ndx : Os) {
+                ret[ndx] = O;
             }
             return ret;
         }
 
-        static auto projVal(const std::vector<Action>& actions)
+        static std::vector<Move> ComplMove(const std::vector<Move>& actions)
         {
-            std::vector<Action::value_t> ret;
-            for (auto a : actions) {
-                ret.push_back(a.val().value());
-            }
-            return ret;
-        }
+            static std::vector<Move> ret;
+            int base_ndx = ((int)actions.back()) > 9 ? 10 : 1;
 
-        static std::vector<int> complNdx(const std::vector<int>& actions_ndxs)
-        {
-            std::vector<int> ret {};
-            for (auto i = 0; i < 9; ++i) {
-                if (std::find(begin(actions_ndxs), end(actions_ndxs), i) == end(actions_ndxs)) {
-                    ret.push_back(i);
+            for (auto i = base_ndx; i < base_ndx + 9; ++i)
+            {
+                if (std::find(begin(actions), end(actions), Move(i)) == end(actions)) {
+                    ret.emplace_back(Move(i));
                 }
             }
             return ret;
         }
 
-        static inline bool testProjNdx()
-        {
-            std::vector<Action> actions { { 0, Token::X }, { 2, Token::X }, { 5, Token::O } };
+        // void SetUp() { }
 
-            static bool res = projNdx(actions) == std::vector<int>({ 0, 2, 5 });
-            return res;
-        }
-
-        static inline bool testProjVal()
-        {
-            std::vector<Action> actions { { 0, Token::X }, { 2, Token::X }, { 5, Token::O } };
-
-            const static bool res = projVal(actions) == std::vector<State::value_t>({ Token::X, Token::X, Token::O });
-            return res;
-        }
-
-        static inline bool testComplNdx()
-        {
-            std::vector<int> ndxs { { 0, 2, 5, 6, 7 } };
-
-            const static bool res = complNdx(ndxs) == std::vector<int>({ 1, 3, 4, 8 });
-            return res;
-        }
-
-        void SetUp()
-        {
-            if (!testProjNdx()) {
-                FAIL() << "projNdx Environment method failed test.";
-            }
-            if (!testProjVal()) {
-                FAIL() << "projVal Environment method failed test.";
-            }
-            if (!testComplNdx()) {
-                FAIL() << "complNdx Environment method failed test.";
-            }
-        }
+        static const inline State::grid_t testGridEmpty {{TOK_EMPTY, TOK_EMPTY, TOK_EMPTY, TOK_EMPTY, TOK_EMPTY, TOK_EMPTY, TOK_EMPTY, TOK_EMPTY, TOK_EMPTY}};
+        static const inline State::grid_t testGridOneX {{X, TOK_EMPTY, TOK_EMPTY, TOK_EMPTY, TOK_EMPTY, TOK_EMPTY, TOK_EMPTY, TOK_EMPTY, TOK_EMPTY}};
+        static const inline State::grid_t testGridOneXO {{X, TOK_EMPTY, TOK_EMPTY, O, TOK_EMPTY, TOK_EMPTY, TOK_EMPTY, TOK_EMPTY, TOK_EMPTY}};
     };
 
     class StateTest : public ::testing::Test {
@@ -120,8 +60,8 @@ namespace {
         StateTest()
             : initialState()
             , stateHeap(new State())
-            , action_X0(0, Token::X)
-            , action_O4(4, Token::O)
+            , action_X0{1}
+            , action_O4{4}
         {
         }
         ~StateTest() override
@@ -131,66 +71,67 @@ namespace {
         // void TearDown() override { }
         State initialState;
         State* stateHeap;
-        ttt::Action action_X0;
-        ttt::Action action_O4;
-    };
+        Move action_X0;
+        Move action_O4;
+     };
 
     using namespace ::testing;
 
+    TEST_F(StateTest, CreateGridTestMethod)
+    {
+        State::grid_t expected {{ X, TOK_EMPTY, O, TOK_EMPTY, X, O, TOK_EMPTY, TOK_EMPTY, X }};
+        auto grid = TestEnvironment::CreateGrid({0, 4, 8}, {2, 5});
+
+        ASSERT_THAT(grid, ContainerEq(expected));
+    }
+
+    TEST_F(StateTest, ComplMoveTestMethod)
+    {
+        std::vector<Move> expected = { Move(3), Move(4), Move(6), Move(7), Move(8) };
+        std::vector<Move> ndxs { Move(1), Move(2), Move(5), Move(9) };
+        auto moves = TestEnvironment::ComplMove(ndxs);
+
+        ASSERT_THAT(moves, ContainerEq(expected));
+    }
+
     TEST_F(StateTest, StateDefaultCtorInitializesAnEmptyGrid)
     {
-        //ASSERT_THAT(initialState.grid(), BeginEndDistanceIs(Eq(9)));
         ASSERT_THAT(initialState.grid(), ContainerEq(TestEnvironment::testGridEmpty));
     }
 
     TEST_F(StateTest, StateCanBeInitializedByMovingGrid)
     {
-        auto testStateX = State(std::move(TestEnvironment::testGridOneX));
+        auto grid = TestEnvironment::testGridOneX;
+        auto testStateX = State(std::move(grid));
         ASSERT_THAT(testStateX.grid(), ContainerEq(TestEnvironment::testGridOneX));
     }
 
-    TEST_F(StateTest, ActionPlacesTokenAtIndex)
+    TEST_F(StateTest, ApplyMovePlacesTokenAtIndex)
     {
-        State state { action_X0(initialState) };
-        ASSERT_THAT(state.grid(), ContainerEq(TestEnvironment::testGridOneX));
+        initialState.apply_move(Move(1));
+        ASSERT_THAT(initialState.grid(), ContainerEq(TestEnvironment::testGridOneX));
     }
 
-    TEST_F(StateTest, ActionMutableMutatesState)
+    TEST_F(StateTest, ApplyMoveIsComposable)
     {
-        State before {};
-        auto after = Action(4, Token::O)(before);
-
-        ASSERT_THAT(after.grid(), ContainerEq(before.grid()));
-    }
-
-    TEST_F(StateTest, ActionImmutableCreatesCopy)
-    {
-        const State before {};
-        auto after = Action(4, Token::O)(before);
-
-        ASSERT_THAT(after.grid(), Not(ContainerEq(before.grid())));
-    }
-
-    TEST_F(StateTest, ActionInPlaceIsComposable)
-    {
-        ASSERT_THAT(action_O4(action_X0(initialState)).grid(), ContainerEq(TestEnvironment::testGridOneXO));
+        ASSERT_THAT(initialState.apply_move(Move(1)).apply_move(Move(14)).grid(), ContainerEq(TestEnvironment::testGridOneXO));
     }
 
     TEST_F(StateTest, IsTerminalTrueOnFullGrid)
     {
-        State stateFullX { TestEnvironment::GridBuilder({ 0, 1, 2, 3, 4, 5, 6, 7, 8 }, {}) };
+        State stateFullX (TestEnvironment::CreateGrid({ 0, 1, 2, 3, 4, 5, 6, 7, 8 }, {}));
+
         ASSERT_THAT(stateFullX.is_terminal(), IsTrue());
     }
 
     TEST_F(StateTest, IsTerminalFalseWhenStillCanPlay)
     {
         State state { };
-        std::vector<ttt::Action> actions ({ {2, Token::O}, {4, Token::X}, {1, Token::O}, {7, Token::X} });
+        std::vector<Move> actions { Move(12), Move(5), Move(11), Move(8) };
 
         auto it = begin(actions);
         auto apply_action = [&it, &state] () {
-
-            state = (*it)(state);
+            state = state.apply_move(*it);
             ++it;
         };
 
@@ -212,47 +153,86 @@ namespace {
 
     TEST_F(StateTest, IsTerminalTrueOnWinner)
     {
-        State winnerX { TestEnvironment::GridBuilder({ 0, 4, 8 }, { 2, 5 }) };
-        State winnerO { TestEnvironment::GridBuilder({ 0, 4, 7 }, { 2, 5, 8 }) };
+        State winnerX ( TestEnvironment::CreateGrid({ 0, 4, 8 }, { 2, 5 }) );
+        State winnerO ( TestEnvironment::CreateGrid({ 0, 4, 7 }, { 2, 5, 8 }) );
 
         EXPECT_THAT(winnerX.is_terminal(), IsTrue());
         EXPECT_THAT(winnerO.is_terminal(), IsTrue());
     }
 
-    TEST_F(StateTest, ValidActionNdxIfAndOnlyIfCellUnoccupied)
+    TEST_F(StateTest, EmptyCellsFullOnInitialState)
     {
-        State state { TestEnvironment::GridBuilder({ 0, 4, 7 }, { 2, 5 }) };
+        std::list<Cell> expected;
+        for (int i=1; i<10; ++i)
+        {
+            expected.push_back(Cell(i));
+        }
 
-        auto validActionsNdxs = TestEnvironment::projNdx(state.valid_actions());
-
-        auto invalidActionsNdxs = TestEnvironment::complNdx(validActionsNdxs);
-
-        EXPECT_THAT(validActionsNdxs, IsSupersetOf({ 1, 3, 6, 8 }));
-        EXPECT_THAT(invalidActionsNdxs, IsSupersetOf({ 0, 4, 7, 2, 5 }));
+        ASSERT_THAT(initialState.empty_cells(), ContainerEq(expected));
     }
 
-    TEST_F(StateTest, ValidActionTokenIsPlayerToPlay)
+    TEST_F(StateTest, EmptyCellsCorrectlyInitializedWhenMovingGrid)
     {
-        State state { TestEnvironment::GridBuilder({ 0, 4, 7 }, { 2, 5 }) };
-        State stateSwap25 { TestEnvironment::GridBuilder({ 2, 4, 7 }, { 0, 5 }) };
+        State state ( TestEnvironment::CreateGrid({ 0, 4, 7 }, { 2, 5 }) );
+        std::list<Cell> expected;
+        std::vector<int> expected_ndx {{ 2, 4, 7, 9 }};
+        for (auto ndx : expected_ndx)
+        {
+            expected.push_back(Cell(ndx));
+        }
 
-        auto validActionsTokens = TestEnvironment::projVal(state.valid_actions());
-        auto validActionsTokensSwap = TestEnvironment::projVal(stateSwap25.valid_actions());
-
-        ttt::Action move { 1, Token::O };
-        auto validActionsTokensAfterMove = TestEnvironment::projVal(move(state).valid_actions());
-
-        EXPECT_THAT(validActionsTokens, Each(Token::O));
-        EXPECT_THAT(validActionsTokensSwap, Each(Token::O));
-        EXPECT_THAT(validActionsTokensAfterMove, Each(Token::X));
+        ASSERT_THAT(state.empty_cells(), ContainerEq(expected));
     }
+
+    TEST_F(StateTest, ApplyingMoveRemovesCellFromEmptyCells)
+    {
+        std::list<Cell> expected;
+        for (int i=1; i<10; ++i)
+        {
+            if (i != 5)
+                expected.push_back(Cell(i));
+        }
+        initialState.apply_move(Move(5));
+
+        ASSERT_THAT(initialState.empty_cells(), ContainerEq(expected));
+    }
+
+    TEST_F(StateTest, NextPlayerIsWorking)
+    {
+        auto state = initialState;
+        EXPECT_THAT(state.next_player(), Eq(X));
+
+        state.apply_move(Move(2));
+        EXPECT_THAT(state.next_player(), Eq(O));
+
+        state.apply_move(Move(13));
+        EXPECT_THAT(state.next_player(), Eq(X));
+    }
+
+    TEST_F(StateTest, ValidActionForEachEmptyCell)
+    {
+        State state ( TestEnvironment::CreateGrid({ 0, 4, 7 }, { 2, 5 }) );
+
+        auto empty_cells = state.empty_cells();
+        std::vector<Move> expected {{ Move(12), Move(14), Move(17), Move(19) }};
+
+        ASSERT_THAT(state.valid_actions(), ContainerEq(expected));
+    }
+
+    TEST_F(StateTest, ValidActionsReflectNextPlayerToken)
+    {
+        EXPECT_THAT(initialState.valid_actions(), Each(Lt(10)));
+        initialState.apply_move(Move(1));
+        EXPECT_THAT(initialState.valid_actions(), Each(Gt(10)));
+    }
+
 
 } // namespace
-} // namespace ttt
+} // namespace mcts
 
 int main(int argc, char* argv[])
 {
-    testing::AddGlobalTestEnvironment(new ttt::TestEnvironment());
+    testing::AddGlobalTestEnvironment(new mcts::TestEnvironment());
     testing::InitGoogleMock(&argc, argv);
     return RUN_ALL_TESTS();
 

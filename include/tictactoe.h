@@ -2,71 +2,95 @@
 #define __TICTACTOE_H_
 
 #include <array>
-#include <optional>
+#include <list>
+#include <bits/stdint-uintn.h>
 #include <vector>
 
-namespace ttt {
+namespace mcts {
 
-/** Represents the possible values for the state's cells. */
-enum class Token { X,
-    O }; //, EMPTY };
+// typedef struct Ndx {
+//     enum _Ndx : int {
+//         _BEGIN = 0,
+//         _NULL = 10
+//     } m_ndx;
+//     Ndx operator++() {
+//         int tm_ndx = m_ndx;
+//         if (++tm_ndx < 10) { return (_Ndx)(tm_ndx); } { return _BEGIN; }
+//     }
+//     operator int() { return (int)m_ndx; }
+//     Ndx(int i) : m_ndx((_Ndx)i) { }
+// } Ndx;
 
-/** Class that implements the changes that can be done to a state. */
-class Action;
+// TODO Update the Keys methods. I change TOK_EMPTY from 2 to 0 so that arrays initialize to
+// the correct token by default.
+enum Token {
+    TOK_EMPTY,
+    X,
+    O,
+};
+
+enum Cell {
+    CELL_NULL,
+    CELL_END = 10
+};
+
+enum Move : int {
+    MOVE_NULL,
+    MOVE_END=20
+};
+
+typedef uint64_t Key;
 
 /**
- * State class, holds the data of the game and manages the various rules.
- * Allows Action as a friend class so that none of State's methods have
- * any side effect.
-*/
+ * From a StateData object, the state can be reconstructed, or
+ * a move can be undone.
+ */
+struct StateData {
+    Key key;
+    StateData* previous;
+};
+
 class State {
-public:
-    using ndx_t = int;
-    using value_t = std::optional<Token>;
-    using grid_t = std::array<value_t, 9>;
+    public:
+    using grid_t = std::array<Token, 9>;
+
+    static void init();
 
     State();
-    explicit State(const grid_t&);
+    // explicit State(const grid_t&);
     explicit State(grid_t&&);
-    bool is_terminal() const;
-    std::vector<Action> valid_actions() const;
-    const grid_t& grid() const;
 
-private:
-    friend class Action;
-    /** The internal data of the state. */
-    grid_t m_grid;
-    bool is_full() const;
-    bool has_winner() const;
+    // Game logic
+    Token winner() const;
     Token next_player() const;
-    static const std::array<std::array<ndx_t, 3>, 8> WIN_COMBIN;
-};
+    bool full() const;
+    bool is_terminal() const;
+    std::vector<Move>& valid_actions();
+    State& apply_move(Move);
+    State& undo_move(Move);
 
-/**
- * Changes the token at a specified index to a specified token.
- * Actions with `m_token' equal to `Token::EMPTY' do nothing.
-*/
-class Action {
-public:
-    using ndx_t = State::ndx_t;
-    using value_t = State::value_t;
-    using grid_t = State::grid_t;
+    // Zobrist keys
+    Key get_key() const;
 
-    Action(ndx_t, value_t);
-    ndx_t ndx() const;
-    value_t val() const;
-    State& operator()(State&) const;
-    State operator()(const State&) const;
-    bool operator==(const Action&) const;
+    // Game logic encoded in bitstrings.
+    static bool is_terminal(Key);
+    static Token winner(Key);
+    Token next_player(Key) const;
+    Key apply_move(Move, Key) const;
+    Key undo_move(Move, Key) const;
+
+    const grid_t& grid() const;                 // Only for testing.
+    const std::list<Cell>& empty_cells() const; // Only for testing
 
 private:
-    ndx_t m_ndx;
-    value_t m_val;
-
-    /** Implementation of the action. */
-    grid_t& apply_to(grid_t&) const;
+    static const std::array<std::array<enum Cell, 3>, 8> WIN_LINES;
+    grid_t m_grid;
+    StateData* data;
+    std::list<Cell> m_empty_cells;
+    std::vector<Move> m_valid_actions;
 };
 
-} // ttt
+} // namespace mcts
+
 
 #endif // __TICTACTOE_H_
