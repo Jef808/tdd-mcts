@@ -46,7 +46,7 @@ class State {
     State();
     // explicit State(const grid_t&);
     explicit State(grid_t&&);  // Only for testing.
-
+    State clone() const;
     // Game logic
     Token winner() const;
     Token next_player() const;

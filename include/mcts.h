@@ -23,19 +23,19 @@ public:
     Move MCTSBestMove();
 
     void create_root();
-    Node* selection_policy();
-    ActionNode& expansion_policy();
+    Node* tree_policy();
     Reward rollout_policy(Node* node);
     void backpropagate(Node* node, Reward r);
 
     Node* current_node();
     bool is_root(Node* root);
-    bool is_terminal();
+    bool is_terminal(Node* node);
     void do_move(Move move);
     void undo_move();
     void init_children();
 
     Reward random_simulation(Move move);
+    Reward evaluate_terminal();
 
 private:
     State& state;
@@ -70,6 +70,11 @@ public:
     cont_children::iterator begin() { return children.begin(); }
     cont_children::iterator end() { return children.end(); }
 };
+
+inline bool operator==(const Node& a, const Node& b)
+{
+    return a.key == b.key;
+}
 
 typedef std::unordered_map<Key, Node> MCTSLookupTable;
 

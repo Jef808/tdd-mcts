@@ -62,9 +62,26 @@ void Agent::create_root()
     }
 }
 
+Node* Agent::tree_policy()
+{
+    assert(current_node() == root);
+
+}
+
 Reward Agent::rollout_policy(Node* node)
 {
+    assert(node == current_node());
+    assert(node->n_visits == 0);
 
+    if (is_terminal(node))
+    {
+        return evaluate_terminal();
+    }
+
+    init_children();
+    ++node->n_visits;
+
+    return node->children_list().begin()->prior_value;
 }
 
 
@@ -75,7 +92,7 @@ Node* Agent::current_node()
     return nodes[ply];
 }
 
-bool Agent::is_terminal()
+bool Agent::is_terminal(Node* node)
 {
     return false;
 }
@@ -87,7 +104,7 @@ void Agent::init_children()
 
     for (auto move : valid_actions)
     {
-        Reward prior = calculate_prior(move);
+        Reward prior = random_simulation(move);
 
         ActionNode new_action;
         new_action.move = move;
@@ -95,15 +112,55 @@ void Agent::init_children()
         new_action.prior_value = prior;
         new_action.action_value = 0;
         new_action.avg_action_value = 0;
+
+        current_node()->children_list().push_back(new_action);
     }
+
+    std::sort(current_node()->begin(), current_node()->end(), [](const auto& a, const auto& b){
+            return a.prior_value < b.prior_value;
+        });
 }
 
 //***************************** Evaluation of nodes **************************/
 
 Reward Agent::random_simulation(Move move)
 {
-    Node* node = current_node();
-    return 0.5;
+    State sim_state = state.clone();
+    sim_state.apply_move(move);
+    std::vector<Move> valid_moves;
+
+    while (!sim_state.is_terminal())
+    {
+        valid_moves = sim_state.valid_actions();
+        sim_state.apply_move(valid_moves[rand() % valid_moves.size()]);
+    }
+
+    Token token = (int)move < 10 ? X : O;
+    Token winner = sim_state.winner();
+    if (winner == token)
+    {
+        return 1.0;
+    }
+    else if (winner == TOK_EMPTY)
+    {
+        return 0.5;
+    }
+    return 0.0;
+}
+
+Reward Agent::evaluate_terminal()
+{
+    Token token = (int)current_node()->last_move < 10 ? X : O;
+    Token winner = state.winner();
+    if (winner == token)
+    {
+        return 1.0;
+    }
+    else if (winner == TOK_EMPTY)
+    {
+        return 0.5;
+    }
+    return 0.0;
 }
 // Node* Agent::selection_policy()
 // {

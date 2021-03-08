@@ -113,6 +113,12 @@ State::State(grid_t&& grid)
     }
 }
 
+State State::clone() const
+{
+    auto grid = m_grid;
+    return State{std::move(grid)};
+}
+
 Key State::get_key() const
 {
     Key res = 0;
