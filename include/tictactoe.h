@@ -3,30 +3,13 @@
 
 #include <array>
 #include <list>
-#include <bits/stdint-uintn.h>
 #include <vector>
+#include "type.h"
 
 namespace mcts {
 
 // TODO Update the Keys methods. I change TOK_EMPTY from 2 to 0 so that arrays initialize to
 // the correct token by default.
-enum Token {
-    TOK_EMPTY,
-    X,
-    O,
-};
-
-enum Cell : int {
-    CELL_NONE = -1,
-    CELL_END = 9
-};
-
-enum Move : int {
-    MOVE_NONE,
-    MOVE_END = 19
-};
-
-typedef uint64_t Key;
 
 /**
  * From a StateData object, the state can be reconstructed, or
@@ -35,6 +18,7 @@ typedef uint64_t Key;
 struct StateData {
     Key key;
     int gamePly;
+
     StateData* previous;
 };
 
@@ -55,18 +39,11 @@ class State {
     bool is_terminal() const;
     bool is_draw() const;
     std::vector<Move>& valid_actions();
-    State& apply_move(Move);
     void apply_move(Move, StateData&);
     void undo_move(Move);
 
     // Zobrist keys
     Key key() const;
-
-    // Game logic encoded in bitstrings.
-    bool is_terminal(Key);
-    Token winner(Key);
-    Token next_player(Key);
-    //static Key after_move(Key, Move);
 
     const grid_t& grid() const;                 // Only for testing.
     const std::list<Cell>& empty_cells() const; // Only for testing
@@ -80,6 +57,25 @@ private:
 
     int gamePly = 1;
 };
+
+inline bool key_terminal(Key key) {
+    return key & 1;
+}
+
+inline Token key_next_player(Key key) {
+    return Token(1 + (key >> 1 & 1));
+}
+
+inline Token key_winner(Key key) {
+    return (key >> 2) & 1 ? TOK_EMPTY                  // 1*1
+                          : (key >> 1) & 1 ? X         // *11
+                                           : O;        // *01
+}
+
+inline double key_ev_terminal(StateData sd) {
+    return (sd.key >> 2) & 1 ? 0.5    // From the pov of the player who just played,
+                             : 1;     // either it is a draw or a win (reflect token in backpropagation)
+}
 
 } // namespace mcts
 

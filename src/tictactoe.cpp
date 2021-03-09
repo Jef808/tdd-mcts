@@ -70,6 +70,8 @@ namespace Zobrist {
         return tokenKey(i, X) ^ tokenKey(i, O);
     }
 
+    Key sideKey = 2;
+    Key terminalKey = 1;
     /**
      * The second bit tells us the next player to play.
      * the first bit tells us if state is terminal,
@@ -105,11 +107,14 @@ void State::init()
 
 State::State()
     : m_grid{}
+    , gamePly(1)
 {
     for (int i=0; i<9; ++i)
     {
         m_empty_cells.push_back(Cell(i));
         data = new StateData();
+        data->key = 0;
+        data->gamePly = 1;
     }
 }
 
@@ -121,15 +126,6 @@ State::State(grid_t&& grid)
         if (grid[i] == TOK_EMPTY)
             m_empty_cells.push_back(Cell(i));
     }
-}
-
-State State::clone() const
-{
-    auto grid = m_grid;
-    auto state = State{std::move(grid)};
-    state.gamePly = gamePly;
-
-    return state;
 }
 
 Key State::key() const
@@ -182,23 +178,25 @@ bool State::is_terminal() const
 
 bool State::is_draw() const
 {
-    return is_terminal() && winner() == TOK_EMPTY;
+    return is_full() && winner() == TOK_EMPTY;
 }
 
-// TODO: Update tests etc... and delete this
-State& State::apply_move(Move m)
-{
-    auto cell = moveToCell(m);
-    assert(m_empty_cells.remove(cell) == 1);
+// // TODO: Update tests etc... and delete this
+// State& State::apply_move(Move m)
+// {
+//     auto cell = moveToCell(m);
+//     assert(m_empty_cells.remove(cell) == 1);
 
-    m_grid[(int)cell] = moveToToken(m);
-    ++gamePly;
+//     m_grid[(int)cell] = moveToToken(m);
+//     ++gamePly;
 
-    return *this;
-}
+//     return *this;
+// }
 
 void State::apply_move(Move m, StateData& new_sd)
 {
+    Key old_key = data->key;
+
     new_sd = *data;
     new_sd.previous = data;
     data = &(new_sd);
@@ -206,19 +204,27 @@ void State::apply_move(Move m, StateData& new_sd)
     auto cell = moveToCell(m);
     assert(m_empty_cells.remove(cell) == 1);
 
-    data->key ^= Zobrist::moveKey(m);
+    m_grid[(int)cell] = moveToToken(m);
+    old_key ^= Zobrist::moveKey(m); // Incorporate the new move.
+    old_key ^= Zobrist::sideKey;    // Switch the next player indicator
 
-    if (winner() != TOK_EMPTY)
-    {
-        data->key ^= 1;    // Toggle first two bits.
-    }
-    else if (is_terminal())
-    {
-        data->key ^= 5;    // Toggle first and third bits.
-    }
+    new_sd = *data;
+    new_sd.previous = data;
+    data = &(new_sd);
 
     ++gamePly;
-    m_grid[(int)cell] = moveToToken(m);
+    ++data->gamePly;
+
+    if (is_terminal())
+    {
+        old_key ^= 1;               // Indicate winner with second bit (next to play).
+    }
+    if (winner() == TOK_EMPTY)
+    {
+        old_key ^= 4;               // Indicate draw with first and third bit.
+    }
+
+    data->key = old_key;
 }
 
 void State::undo_move(Move m)
@@ -230,26 +236,7 @@ void State::undo_move(Move m)
     m_empty_cells.push_back(cell);
 
     --gamePly;
-    data = data->previous;
-}
-
-bool State::is_terminal(Key key)
-{
-    return key & 1;
-}
-
-Token State::winner(Key key)
-{
-    return key & 1 ? key >> 2 & 1 ? TOK_EMPTY
-                                  : key >> 1 & 1 ? X
-                                                 : O
-                   : TOK_EMPTY;
-    //return Token((key & 6) >> 1);
-}
-
-Token State::next_player(Key key)
-{
-    return Token(key >> 1 & 1);
+    data = data->previous;             // TODO Save the data discarded somehwere!
 }
 
 const State::grid_t& State::grid() const

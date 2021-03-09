@@ -2,6 +2,8 @@
 #include <assert.h>
 #include <math.h>
 #include "mcts.h"
+#include "debug.h"
+
 
 namespace mcts {
 
@@ -50,6 +52,7 @@ TimePoint time_elapsed()
 Agent::Agent(State& state)
     : state(state)
     , nodes{}
+    , stackBuf{}
 {
     create_root();
 }
@@ -154,6 +157,11 @@ void Agent::backpropagate(Node* node, Reward r)
     }
 }
 
+Reward Agent::evaluate_terminal()
+{
+    return key_ev_terminal(states[ply]);
+}
+
 ActionNode* Agent::best_uct(Node* node)
 {
     int best = -1;
@@ -200,7 +208,8 @@ Node* Agent::current_node()
 
 bool Agent::is_terminal(Node* node)
 {
-    return false;
+    assert(node == current_node());
+    return key_terminal(states[ply].key);
 }
 
 void Agent::init_children()
@@ -210,6 +219,10 @@ void Agent::init_children()
 
     for (auto move : valid_actions)
     {
+        stackBuf[ply].ply = ply;
+        stackBuf[ply].currentMove = move;
+        stackBuf[ply].r = 0;
+
         Reward prior = random_simulation(move);
 
         ActionNode new_action;
@@ -235,7 +248,7 @@ void Agent::init_children()
 void Agent::apply_move(Move move)
 {
     ++ply;
-    state.apply_move(move);
+    state.apply_move(move, states[ply]);
 }
 
 void Agent::undo_move()
@@ -244,56 +257,58 @@ void Agent::undo_move()
     state.undo_move(actions[ply]->move);
 }
 
+void Agent::undo_move(Move move)
+{
+    --ply;
+    state.undo_move(move);
+}
+
 //***************************** Evaluation of nodes **************************/
 
+// TODO I need the search stack to record which moves I need to undo!!
+//
+// First idea would be to not save or lookup anything, but save the next-to-last state
+// (really, state-before-known-win/lose) to start building a table of alphas and betas.
 Reward Agent::random_simulation(Move move)
 {
-    State sim_state = state.clone();
-    sim_state.apply_move(move);
-    std::vector<Move> valid_moves;
+    Debug::display(std::cerr, state);
+    std::cerr << std::endl;
+    std::cerr << "Random simulation, ply " << ply << ", next move is " << move << std::endl;
 
-    while (!sim_state.is_terminal())
+    if (move == MOVE_NONE)
     {
-        valid_moves = sim_state.valid_actions();
-        sim_state.apply_move(valid_moves[rand() % valid_moves.size()]);
+        std::cerr << "Reached terminal state at ply " << ply << std::endl;
+        std::cerr << "Evaluation : " << std::fixed << key_ev_terminal(states[ply])  << std::endl;
+        return key_ev_terminal(states[ply]);
     }
 
-    Token token = (int)move < 10 ? X : O;
-    Token winner = sim_state.winner();
-    if (winner == token)
-    {
-        return 1.0;
-    }
-    else if (winner == TOK_EMPTY)
-    {
-        return 0.5;
-    }
-    return 0.0;
+    apply_move(move);
+
+    int n = state.valid_actions().size();
+    Move m;
+    if (n == 0)
+        m = MOVE_NONE;
+    else
+        m = state.valid_actions()[rand() % n];
+
+    stackBuf[ply].ply = ply;
+    stackBuf[ply].currentMove = m;
+    stackBuf[ply].r = 1 - random_simulation(m);
+
+    undo_move(stackBuf[ply-1].currentMove);
+
+    std::cerr << "After backtracking, evaluation at ply " << ply << ": " << stackBuf[ply+1].r << std::endl;
+    return stackBuf[ply+1].r;
 }
 
-Reward Agent::evaluate_terminal()
-{
-    Token token = current_node()->last_move < 10 ? X : O;
-    Token winner = state.winner();
-    if (winner == token)
-    {
-        return 1.0;
-    }
-    else if (winner == TOK_EMPTY)
-    {
-        return 0.5;
-    }
-    return 0.0;
-}
-// Node* Agent::selection_policy()
+// Reward Agent::evaluate_terminal()
 // {
-//     assert(current_node() == root);
-//     return current_node();
+//     Key key = states[ply].statusKey;
+
+//     Reward r = key >> 2 & 1 ? 0
+//                             : key >> 1 & 1 ? (1 - (ply & 1))
+//                             : ply & 1;
+//     return r;
 // }
 
-// void Agent::init_actionchild(Node* node, Move move, Reward rollout_score, int move_cnt)
-// {
-
-
-// }
 } // namespace mcts

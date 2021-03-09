@@ -3,8 +3,6 @@ cmake_minimum_required(VERSION 3.1)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
 
-include_directories($ENV{GMOCK_HOME}/include $ENV{GMOCK_HOME}/gtest/include)
-link_directories($ENV{GMOCK_HOME}/mybuild $ENV{GMOCK_HOME}/gtest/mybuild)
 #add_definitions(-std=c++0x -stdlib=libc++)
 
 set(CMAKE_CXX_COMPILER /usr/bin/clang++)
@@ -23,6 +21,7 @@ set(tests_dir
   ${CMAKE_CURRENT_SOURCE_DIR}/tests)
 
 set(tictactoe_sources
+  ${headers_dir}/type.h
   ${sources_dir}/tictactoe.cpp
   ${headers_dir}/tictactoe.h)
 
@@ -30,6 +29,7 @@ add_library(tictactoe ${tictactoe_sources})
 target_include_directories(tictactoe PUBLIC ${sources_dir} ${headers_dir})
 
 set(mcts_sources
+  ${headers_dir}/type.h
   ${sources_dir}/mcts.cpp
   ${headers_dir}/mcts.h)
 
@@ -42,7 +42,8 @@ set(sources
   ${headers_dir}/tictactoe.h
   ${sources_dir}/tictactoe.cpp
   ${headers_dir}/mcts.h
-  ${sources_dir}/mcts.cpp)
+  ${sources_dir}/mcts.cpp
+  ${headers_dir}/type.h)
 
 
 add_executable(main ${sources})
@@ -62,7 +63,8 @@ target_link_libraries(testState tictactoe)
 target_link_libraries(testState pthread)
 target_link_libraries(testState gmock)
 target_link_libraries(testState gtest)
-
+target_include_directories(testState PUBLIC $ENV{GMOCK_HOME}/include $ENV{GMOCK_HOME}/gtest/include)
+target_link_directories(testState PUBLIC $ENV{GMOCK_HOME}/mybuild $ENV{GMOCK_HOME}/gtest/mybuild)
 # set(testNode_sources
 #   ${tests_dir}/testNode.cpp
 #   ${tests_dir}/mocks.h

@@ -4,6 +4,7 @@
 #include <chrono>
 #include <unordered_map>
 #include "tictactoe.h"
+#include "type.h"
 
 namespace mcts {
 
@@ -18,16 +19,20 @@ private:
   std::vector<Entry> table = std::vector<Entry>(Size);
 };
 
-typedef double Reward;
+struct SearchStack {
+    Move currentMove;
+    int ply;
+    Reward r;
+};
 
 class Agent {
 
 public:
     static const int MAX_PLY = 128;
     static const int MAX_CHILDREN = 128;
-    const double exploration_cst = 0.7;
+    const double exploration_cst = 4.0;
     const int MAX_TIME = 5000;    // In milliseconds.
-    const int MAX_ITER = 10000;
+    const int MAX_ITER = 15000;
 
     Agent(State& state);
 
@@ -47,6 +52,7 @@ public:
     bool is_terminal(Node* node);
     void apply_move(Move move);
     void undo_move();
+    void undo_move(Move move);
     void init_children();
 
     Reward random_simulation(Move move);
@@ -60,8 +66,12 @@ private:
     int iteration_cnt;
 
     // To keep track of nodes during the search (indexed by ply)
-    std::array<Node*, MAX_PLY>       nodes;
-    std::array<ActionNode*, MAX_PLY> actions;
+    std::array<Node*, MAX_PLY>       nodes;       // The nodes.
+    std::array<ActionNode*, MAX_PLY> actions;     // The actions.
+    std::array<StateData, MAX_PLY>   states;      // Utility allowing state to do and undo actions.
+    std::array<SearchStack, MAX_PLY> stackBuf;    // Allows to perform independant without creading nodes.
+    SearchStack* stack;
+
 };
 
 struct ActionNode {
@@ -96,6 +106,6 @@ typedef std::unordered_map<Key, Node> MCTSLookupTable;
 
 extern MCTSLookupTable MCTS;
 
-}
+}  // namespace mcts
 
 #endif // __MCTS_H_
