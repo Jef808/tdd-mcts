@@ -1,41 +1,14 @@
-#include "tictactoe.h"
-#include "gmock/gmock-matchers.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include <optional>
 #include <typeinfo>
 #include <utility>
+#include "gmock/gmock-matchers.h"
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
+#include "tictactoe.h"
+#include "debug.h"
 
 namespace mcts {
 namespace {
-
-    std::ostream& operator<<(std::ostream& _out, Token token)
-    {
-        switch (token) {
-        case TOK_EMPTY:
-            _out << '*';
-            break;
-        case X:
-            _out << 'X';
-            break;
-        case O:
-            _out << 'O';
-            break;
-        }
-
-        return _out;
-    }
-
-    std::ostream& operator<<(std::ostream& _out, const State& state)
-    {
-        auto grid = state.grid();
-        for (int i = 0; i < 9; ++i) {
-            _out << grid[i];
-            if ((i + 1) % 3 == 0)
-                _out << '\n';
-        }
-        return _out;
-    }
 
     class TestEnvironment : public ::testing::Environment {
     public:
@@ -46,7 +19,7 @@ namespace {
     class StateTest : public ::testing::Test {
     protected:
         StateTest()
-            : initialState()
+            : initialState{}
         {
         }
 
@@ -76,7 +49,7 @@ namespace {
             return state;
         }
 
-        std::array<StateData, 40> sd;
+        std::array<StateData, 45> sd;
     };
 
     using namespace ::testing;
@@ -92,13 +65,6 @@ namespace {
     TEST_F(StateTest, StateDefaultCtorInitializesAnEmptyGrid)
     {
         ASSERT_THAT(initialState.grid(), ContainerEq(TestEnvironment::testGridEmpty));
-    }
-
-    TEST_F(StateTest, StateCanBeInitializedByMovingGrid)
-    {
-        auto grid = TestEnvironment::testGridOneX;
-        auto testStateX = State(std::move(grid));
-        ASSERT_THAT(testStateX.grid(), ContainerEq(TestEnvironment::testGridOneX));
     }
 
     TEST_F(StateTest, ApplyMovePlacesTokenAtIndex)
@@ -157,6 +123,55 @@ namespace {
         // **x
         State winnerX = CreateState({ 0, 4, 8 }, { 2, 5 });
         ASSERT_THAT(winnerX.winner(), Eq(X));
+    }
+
+    TEST_F(StateTest, WinnerFunctionOkWithO)
+    {
+        // X*X
+        // OOO
+        // X**
+        State winnerO = CreateState({ 0, 2, 6 }, { 3, 4, 5 });
+        ASSERT_THAT(winnerO.winner(), Eq(O));
+    }
+
+    TEST_F(StateTest, DrawFunctionWorks)
+    {
+        // XXO
+        // OOX
+        // XOX
+        State state1 = CreateState({ 0, 1, 5, 6, 8 }, { 2, 3, 4, 7 });
+        // XXO
+        // OXX
+        // XOO
+        State state2 = CreateState({ 0, 1, 4, 5, 6}, {2, 3, 7, 8});
+        // XXO
+        // OXO
+        // XOX
+        State state3 = CreateState({ 0, 1, 4, 6, 8 }, { 2, 3, 5, 7 });
+
+        EXPECT_THAT(state1.is_draw(), IsTrue());
+        EXPECT_THAT(state2.is_draw(), IsTrue());
+        EXPECT_THAT(state3.is_draw(), IsFalse());
+    }
+
+    TEST_F(StateTest, WinnerFunctionWorksWithDraws)
+    {
+        // XXO
+        // OOX
+        // XOX
+        State state1 = CreateState({ 0, 1, 5, 6, 8 }, { 2, 3, 4, 7 });
+        // XXO
+        // OXX
+        // XOO
+        State state2 = CreateState({ 0, 1, 4, 5, 6}, {2, 3, 7, 8});
+        // XXO
+        // OXO
+        // XOX
+        State state3 = CreateState({ 0, 1, 4, 6, 8 }, { 2, 3, 5, 7 });
+
+        EXPECT_THAT(state1.winner(), Eq(TOK_EMPTY));
+        EXPECT_THAT(state2.winner(), Eq(TOK_EMPTY));
+        EXPECT_THAT(state3.winner(), Eq(X));
     }
 
     TEST_F(StateTest, EmptyCellsFullOnInitialState)
@@ -273,7 +288,7 @@ namespace {
     {
         // XOX
         // OXO
-        // XO*
+        // X**
         State state1 = CreateState({0, 2, 4, 6}, {1, 3, 5});
         // XX*
         // OOO
@@ -295,13 +310,9 @@ namespace {
         // XOO
         State state2 = CreateState({ 0, 1, 4, 5, 6}, {2, 3, 7, 8});
 
-        EXPECT_THAT(key_terminal(state1.key()), 1);
-        //EXPECT_THAT(key_terminal(state2.key()), TOK_EMPTY);
-
-        EXPECT_THAT(state1.winner(), TOK_EMPTY);
-        EXPECT_THAT(state2.winner(), TOK_EMPTY);
-
-    }
+        EXPECT_THAT(key_winner(state1.key()), TOK_EMPTY);
+        EXPECT_THAT(key_winner(state1.key()), TOK_EMPTY);
+     }
 
 } // namespace
 } // namespace mcts

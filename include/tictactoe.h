@@ -30,8 +30,7 @@ class State {
 
     State();
     // explicit State(const grid_t&);
-    explicit State(grid_t&&);  // Only for testing.
-    State clone() const;
+    // explicit State(grid_t&&);
     // Game logic
     Token winner() const;
     Token next_player() const;
@@ -45,17 +44,19 @@ class State {
     // Zobrist keys
     Key key() const;
 
+    StateData* data;
+    int gamePly = 1;
+
     const grid_t& grid() const;                 // Only for testing.
     const std::list<Cell>& empty_cells() const; // Only for testing
 
 private:
     static const std::array<std::array<enum Cell, 3>, 8> WIN_LINES;
     grid_t m_grid;
-    StateData* data;
     std::list<Cell> m_empty_cells;
     std::vector<Move> m_valid_actions;
 
-    int gamePly = 1;
+
 };
 
 inline bool key_terminal(Key key) {

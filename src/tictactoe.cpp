@@ -48,10 +48,6 @@ Move cellTokenToMove(Cell c, Token t)
 
 //*********************************  State  ******************************/
 
-
-// TODO: Should separate the core "id-key" that can move with simple xors, from the whole
-// key encorporating bitmasking info etc... (which needs to be recomputed).
-//
 // Can do the TT queries with the id-keys, and put the rest of the data in a StateData object (which is fetched).
 namespace Zobrist {
 
@@ -70,8 +66,9 @@ namespace Zobrist {
         return tokenKey(i, X) ^ tokenKey(i, O);
     }
 
-    Key sideKey = 2;
     Key terminalKey = 1;
+    Key sideKey = 2;
+    Key drawKey = 4;
     /**
      * The second bit tells us the next player to play.
      * the first bit tells us if state is terminal,
@@ -79,10 +76,10 @@ namespace Zobrist {
      *
      * 011 : 'X wins', 001 : 'O wins', 1*1 : 'draw', *00 : 'X to play', *10 : 'O to play'.
      */
-    Key status_key(const State& state) {
-        Key ret = state.next_player() << 1;
+    uint8_t status_key(const State& state) {
+        Key ret = ((state.next_player()-1) << 1);
         ret ^= state.is_terminal();
-        ret ^= state.is_draw() << 2;
+        ret ^= (state.is_draw() << 2);
 
         return ret;
     }
@@ -106,27 +103,28 @@ void State::init()
 }
 
 State::State()
-    : m_grid{}
-    , gamePly(1)
+    : gamePly(1)
+    , m_grid{}
+
 {
     for (int i=0; i<9; ++i)
     {
         m_empty_cells.push_back(Cell(i));
-        data = new StateData();
-        data->key = 0;
-        data->gamePly = 1;
     }
+    data = new StateData();
+    data->key = 0;
+    data->gamePly = 1;
 }
 
-State::State(grid_t&& grid)
-    : m_grid(std::move(grid))
-{
-    for (int i=0; i<9; ++i)
-    {
-        if (grid[i] == TOK_EMPTY)
-            m_empty_cells.push_back(Cell(i));
-    }
-}
+// State::State(grid_t&& grid)
+//     : m_grid(std::move(grid))
+// {
+//     for (int i=0; i<9; ++i)
+//     {
+//         if (grid[i] == TOK_EMPTY)
+//             m_empty_cells.push_back(Cell(i));
+//     }
+// }
 
 Key State::key() const
 {
@@ -139,18 +137,19 @@ Token State::next_player() const
     //return m_empty_cells.size() & 1 ? X : O;
 }
 
-/**
- * Lighter version of valid_actions() used to check if
- * state is terminal
- */
 bool State::is_full() const
 {
-    return gamePly >= 9;
+    return gamePly > 9;
 }
 
 std::vector<Move>& State::valid_actions()
 {
     m_valid_actions.clear();
+
+    if (is_terminal())
+    {
+        return m_valid_actions;
+    }
 
     auto token = next_player();
     for (auto c : m_empty_cells)
@@ -181,67 +180,58 @@ bool State::is_draw() const
     return is_full() && winner() == TOK_EMPTY;
 }
 
-// // TODO: Update tests etc... and delete this
-// State& State::apply_move(Move m)
-// {
-//     auto cell = moveToCell(m);
-//     assert(m_empty_cells.remove(cell) == 1);
-
-//     m_grid[(int)cell] = moveToToken(m);
-//     ++gamePly;
-
-//     return *this;
-// }
-
 void State::apply_move(Move m, StateData& new_sd)
 {
-    Key old_key = data->key;
-
-    new_sd = *data;
+    Key key = data->key;
+    // Copy the needed StateData fields to the new one,
+    // then replace it with the new one.
+    new_sd.gamePly = gamePly + 1;
     new_sd.previous = data;
     data = &(new_sd);
 
+    // Make sure the move corresponds to an empty cell
     auto cell = moveToCell(m);
     assert(m_empty_cells.remove(cell) == 1);
 
+    // Place the new token in the cell
     m_grid[(int)cell] = moveToToken(m);
-    old_key ^= Zobrist::moveKey(m); // Incorporate the new move.
-    old_key ^= Zobrist::sideKey;    // Switch the next player indicator
-
-    new_sd = *data;
-    new_sd.previous = data;
-    data = &(new_sd);
-
     ++gamePly;
-    ++data->gamePly;
 
-    if (is_terminal())
-    {
-        old_key ^= 1;               // Indicate winner with second bit (next to play).
-    }
-    if (winner() == TOK_EMPTY)
-    {
-        old_key ^= 4;               // Indicate draw with first and third bit.
-    }
+    // Update the key for the move
+    key ^= Zobrist::moveKey(m);
 
-    data->key = old_key;
+    // Update the key for the game status
+    key ^= Zobrist::sideKey;
+    key ^= is_terminal();               // Indicate winner with second bit (next to play).
+    key ^= (is_draw() << 2);            // Indicate draw with first and third bit.
+
+    // Place the key in the new StateData.
+    data->key = key;
 }
 
+// TODO Save the data discarded somehwere!
+// TODO Just save the previous move in the stack of StateData,
+// then use that move to call undo_move (as it is, there is no
+// guarantee that the previous StateData corresponds to the state
+// we're reverting back to)
 void State::undo_move(Move m)
 {
+    // Make sure the move corresponds to a non-empty cell.
     auto cell = moveToCell(m);
     assert(m_grid[(int)cell] != TOK_EMPTY);
 
+    // Remove the token from the grid.
     m_grid[(int)cell] = TOK_EMPTY;
     m_empty_cells.push_back(cell);
 
+    // Revert the StateData.
     --gamePly;
-    data = data->previous;             // TODO Save the data discarded somehwere!
+    data = data->previous;
 }
 
 const State::grid_t& State::grid() const
 {
-        return m_grid;
+    return m_grid;
 }
 
 const std::list<Cell>& State::empty_cells() const

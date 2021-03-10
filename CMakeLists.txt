@@ -31,25 +31,26 @@ target_include_directories(tictactoe PUBLIC ${sources_dir} ${headers_dir})
 set(mcts_sources
   ${headers_dir}/type.h
   ${sources_dir}/mcts.cpp
-  ${headers_dir}/mcts.h)
+  ${headers_dir}/mcts.h
+  ${headers_dir}/debug.h)
 
 add_library(mcts ${mcts_sources})
 target_link_libraries(mcts tictactoe)
 target_include_directories(mcts PUBLIC ${sources_dir} ${headers_dir})
 
-set(sources
+set(main_sources
   ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
   ${headers_dir}/tictactoe.h
   ${sources_dir}/tictactoe.cpp
   ${headers_dir}/mcts.h
   ${sources_dir}/mcts.cpp
-  ${headers_dir}/type.h)
+  ${headers_dir}/type.h
+  ${headers_dir}/debug.h
+  )
 
-
-add_executable(main ${sources})
+add_executable(main ${main_sources})
 target_link_libraries(main mcts tictactoe)
 target_include_directories(main PUBLIC ${sources_dir} ${headers_dir})
-
 
  set(testState_sources
    ${tests_dir}/testState.cpp

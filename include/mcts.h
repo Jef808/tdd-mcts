@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <unordered_map>
+#include <iostream>
 #include "tictactoe.h"
 #include "type.h"
 
@@ -28,11 +29,11 @@ struct SearchStack {
 class Agent {
 
 public:
-    static const int MAX_PLY = 128;
-    static const int MAX_CHILDREN = 128;
-    const double exploration_cst = 4.0;
-    const int MAX_TIME = 5000;    // In milliseconds.
-    const int MAX_ITER = 15000;
+    static const int MAX_PLY = 12;
+    static const int MAX_CHILDREN = 10;
+    const double exploration_cst = 10.0;
+    static const int MAX_TIME = 5000;    // In milliseconds.
+    static const int MAX_ITER = 15000;
 
     Agent(State& state);
 
@@ -58,6 +59,10 @@ public:
     Reward random_simulation(Move move);
     Reward evaluate_terminal();
 
+    // Debugging
+    void print_node(std::ostream&, Node*) const;
+    void print_tree(std::ostream&, int depth) const;
+
 private:
     State& state;
     Node*   root;
@@ -65,13 +70,22 @@ private:
     int ply;
     int iteration_cnt;
 
+    int rollout_cnt;
+    int descent_cnt;
+    int explored_nodes_cnt;
+
     // To keep track of nodes during the search (indexed by ply)
     std::array<Node*, MAX_PLY>       nodes;       // The nodes.
     std::array<ActionNode*, MAX_PLY> actions;     // The actions.
     std::array<StateData, MAX_PLY>   states;      // Utility allowing state to do and undo actions.
     std::array<SearchStack, MAX_PLY> stackBuf;    // Allows to perform independant without creading nodes.
-    SearchStack* stack;
 
+    // Toggle various traces to std::cerr with those
+    bool debug_counters      = true;
+    bool debug_main_methods  = false;
+    bool debug_best_visits   = false;
+    bool debug_init_children = false;
+    bool debug_random_sim    = false;
 };
 
 struct ActionNode {
@@ -79,10 +93,14 @@ struct ActionNode {
     int                 n_visits;
     Reward              prior_value;
     Reward              action_value;
-    Reward              avg_action_value;
+    double              avg_action_value;
 };
 
 struct Node {
+    // Careful when iterating through children, an ActionNode object doesn't have
+    // a 'zero' value (so may be initialized with random noise).
+    // NOTE: after the init_children() method, the children will be ordered by
+    // their à priori value `prior_value`.
     using cont_children = std::array<ActionNode, Agent::MAX_CHILDREN>;
 public:
     Key                 key                              = 0;           // Zobrist Hash of the state
@@ -93,8 +111,6 @@ public:
     cont_children       children;
 
     cont_children& children_list() { return children; }
-    cont_children::iterator begin() { return children.begin(); }
-    cont_children::iterator end() { return children.begin() + n_children; }
 };
 
 inline bool operator==(const Node& a, const Node& b)
