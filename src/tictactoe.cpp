@@ -31,17 +31,17 @@ const std::array<std::array<Cell, 3>, 8> State::WIN_LINES = {  C({ 0, 1, 2 }), C
  * So after MOVE_NONE = 0, MOVE(1) through MOVE(9) are
  * the moves with 'X' tokens, and MOVE(10) through MOVE(18) are those with 'O'.
  */
-Token moveToToken(Move m)
+Token State::moveToToken(Move m)
 {
     return Token(1+m/10);
 }
 
-Cell moveToCell(Move m)
+Cell State::moveToCell(Move m)
 {
     return Cell((m-1) % 9);
 }
 
-Move cellTokenToMove(Cell c, Token t)
+Move State::cellTokenToMove(Cell c, Token t)
 {
     return Move( 1 + (int)c + (t-1) * 9 );
 }
@@ -59,7 +59,7 @@ namespace Zobrist {
 
     Key tokenKey(Cell i, Token token) {
         //return ndx_keys[(1 + i) * (1 - ((token & 2) >> 1)) + ((token & 1) * 10)];
-        return moveKey(cellTokenToMove(i, token));
+        return moveKey(State::cellTokenToMove(i, token));
     }
 
     Key cellKey(Cell i) {
@@ -140,6 +140,12 @@ Token State::next_player() const
 bool State::is_full() const
 {
     return gamePly > 9;
+}
+
+bool State::is_valid(Move move) const
+{
+    Cell cell = moveToCell(move);
+    return std::find(m_empty_cells.begin(), m_empty_cells.end(), cell) != m_empty_cells.end();
 }
 
 std::vector<Move>& State::valid_actions()

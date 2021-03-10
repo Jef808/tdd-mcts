@@ -37,6 +37,7 @@ class State {
     bool is_full() const;
     bool is_terminal() const;
     bool is_draw() const;
+    bool is_valid(Move move) const;
     std::vector<Move>& valid_actions();
     void apply_move(Move, StateData&);
     void undo_move(Move);
@@ -49,6 +50,10 @@ class State {
 
     const grid_t& grid() const;                 // Only for testing.
     const std::list<Cell>& empty_cells() const; // Only for testing
+
+    static Token moveToToken(Move m);
+    static Cell moveToCell(Move m);
+    static Move cellTokenToMove(Cell c, Token t);
 
 private:
     static const std::array<std::array<enum Cell, 3>, 8> WIN_LINES;

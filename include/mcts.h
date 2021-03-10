@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <iostream>
 #include "tictactoe.h"
+#include "search.h"
 #include "type.h"
 
 namespace mcts {
@@ -20,20 +21,22 @@ private:
   std::vector<Entry> table = std::vector<Entry>(Size);
 };
 
-struct SearchStack {
-    Move currentMove;
-    int ply;
-    Reward r;
-};
+// struct SearchStack {
+//     Move currentMove;
+//     int ply;
+//     Reward r;
+// };
 
 class Agent {
 
 public:
     static const int MAX_PLY = 12;
     static const int MAX_CHILDREN = 10;
-    const double exploration_cst = 10.0;
-    static const int MAX_TIME = 5000;    // In milliseconds.
-    static const int MAX_ITER = 15000;
+    static inline double exploration_cst = 0.7;
+    static inline int MAX_TIME = 5000;    // In milliseconds.
+    static inline int MAX_ITER = 1000;
+    static inline bool use_time            = false;
+    static inline bool propagate_minimax;
 
     Agent(State& state);
 
@@ -47,11 +50,13 @@ public:
 
     ActionNode* best_uct(Node* node);
     ActionNode* best_visits(Node* node);
+    ActionNode* best_avg_val(Node* node);
 
     Node* current_node();
     bool is_root(Node* root);
     bool is_terminal(Node* node);
     void apply_move(Move move);
+    void apply_move(Move move, StateData& sd);
     void undo_move();
     void undo_move(Move move);
     void init_children();
@@ -59,9 +64,21 @@ public:
     Reward random_simulation(Move move);
     Reward evaluate_terminal();
 
+    // Wether to backpropagate the minmax value of nodes or the rollout reward.
+    static void set_backpropagate_minimax(bool);
+
     // Debugging
     void print_node(std::ostream&, Node*) const;
     void print_tree(std::ostream&, int depth) const;
+    static void set_exp_c(double c);
+    static void set_max_time(int t);
+    static void set_max_iter(int i);
+    static inline bool debug_counters      = true;
+    static inline bool debug_main_methods  = false;
+    static inline bool debug_tree          = false;
+    static inline bool debug_best_visits   = false;
+    static inline bool debug_init_children = false;
+    static inline bool debug_random_sim    = false;
 
 private:
     State& state;
@@ -78,14 +95,7 @@ private:
     std::array<Node*, MAX_PLY>       nodes;       // The nodes.
     std::array<ActionNode*, MAX_PLY> actions;     // The actions.
     std::array<StateData, MAX_PLY>   states;      // Utility allowing state to do and undo actions.
-    std::array<SearchStack, MAX_PLY> stackBuf;    // Allows to perform independant without creading nodes.
-
-    // Toggle various traces to std::cerr with those
-    bool debug_counters      = true;
-    bool debug_main_methods  = false;
-    bool debug_best_visits   = false;
-    bool debug_init_children = false;
-    bool debug_random_sim    = false;
+    std::array<Search::Stack, MAX_PLY> stackBuf;  // Allows to perform independant without creading nodes.
 };
 
 struct ActionNode {
@@ -94,6 +104,7 @@ struct ActionNode {
     Reward              prior_value;
     Reward              action_value;
     double              avg_action_value;
+    bool                decisive;                // If it is a known win etc...
 };
 
 struct Node {
@@ -108,6 +119,7 @@ public:
     int                 n_children                       = 0;
     int                 n_expanded_children              = 0;
     Move                last_move                        = MOVE_NONE;
+    bool                best_known;
     cont_children       children;
 
     cont_children& children_list() { return children; }
